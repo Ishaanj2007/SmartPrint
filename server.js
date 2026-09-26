@@ -1139,7 +1139,21 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/agent", agentRoutes);
 CleanupService.startScheduler();
 async function setupViteOrStatic() {
-  if (!isProduction) {
+  const distPath = path3.resolve(process.cwd(), "dist");
+  const hasDist = fs3.existsSync(path3.join(distPath, "index.html"));
+  if (hasDist) {
+    app.use(express.static(distPath, { index: false }));
+    app.use("/assets", express.static(path3.join(distPath, "assets")));
+    app.get("*", (req, res) => {
+      if (req.path.startsWith("/api")) {
+        res.status(404).json({ error: `API route not found: ${req.method} ${req.path}` });
+        return;
+      }
+      const indexFile = path3.join(distPath, "index.html");
+      res.sendFile(indexFile);
+    });
+    console.log("[SERVER] Serving optimized static production build with compiled Tailwind CSS from /dist");
+  } else {
     const { createServer } = await import("vite");
     const vite = await createServer({
       server: { middlewareMode: true },
@@ -1147,28 +1161,12 @@ async function setupViteOrStatic() {
     });
     app.use(vite.middlewares);
     console.log("[SERVER] Mounted Vite middleware for development");
-  } else {
-    const distPath = path3.resolve(process.cwd(), "dist");
-    app.use(express.static(distPath));
-    app.get("*", (req, res) => {
-      if (req.path.startsWith("/api")) {
-        res.status(404).json({ error: `API route not found: ${req.method} ${req.path}` });
-        return;
-      }
-      const indexFile = path3.join(distPath, "index.html");
-      if (fs3.existsSync(indexFile)) {
-        res.sendFile(indexFile);
-      } else {
-        res.status(404).send("Production build not found. Run npm run build first.");
-      }
-    });
-    console.log("[SERVER] Serving static production build from /dist");
   }
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`=======================================================`);
     console.log(` Xerox Print Shop Automation Server running on port ${PORT}`);
     console.log(` URL: http://localhost:${PORT}`);
-    console.log(` Environment: ${process.env.NODE_ENV || "development"}`);
+    console.log(` Mode: ${hasDist ? "Static Production" : "Vite Dev Middleware"}`);
     console.log(`=======================================================`);
   });
 }

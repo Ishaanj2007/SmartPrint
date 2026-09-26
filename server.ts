@@ -65,9 +65,25 @@ app.use('/api/agent', agentRoutes);
 // Start automatic cleanup scheduler (24 hour file retention)
 CleanupService.startScheduler();
 
-// Vite integration: serve Vite in dev, or static build in production
+// Vite integration: serve static build if present, or Vite in dev
 async function setupViteOrStatic() {
-  if (!isProduction) {
+  const distPath = path.resolve(process.cwd(), 'dist');
+  const hasDist = fs.existsSync(path.join(distPath, 'index.html'));
+
+  if (hasDist) {
+    app.use(express.static(distPath, { index: false }));
+    app.use('/assets', express.static(path.join(distPath, 'assets')));
+
+    app.get('*', (req, res) => {
+      if (req.path.startsWith('/api')) {
+        res.status(404).json({ error: `API route not found: ${req.method} ${req.path}` });
+        return;
+      }
+      const indexFile = path.join(distPath, 'index.html');
+      res.sendFile(indexFile);
+    });
+    console.log('[SERVER] Serving optimized static production build with compiled Tailwind CSS from /dist');
+  } else {
     const { createServer } = await import('vite');
     const vite = await createServer({
       server: { middlewareMode: true },
@@ -75,29 +91,13 @@ async function setupViteOrStatic() {
     });
     app.use(vite.middlewares);
     console.log('[SERVER] Mounted Vite middleware for development');
-  } else {
-    const distPath = path.resolve(process.cwd(), 'dist');
-    app.use(express.static(distPath));
-    app.get('*', (req, res) => {
-      if (req.path.startsWith('/api')) {
-        res.status(404).json({ error: `API route not found: ${req.method} ${req.path}` });
-        return;
-      }
-      const indexFile = path.join(distPath, 'index.html');
-      if (fs.existsSync(indexFile)) {
-        res.sendFile(indexFile);
-      } else {
-        res.status(404).send('Production build not found. Run npm run build first.');
-      }
-    });
-    console.log('[SERVER] Serving static production build from /dist');
   }
 
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`=======================================================`);
     console.log(` Xerox Print Shop Automation Server running on port ${PORT}`);
     console.log(` URL: http://localhost:${PORT}`);
-    console.log(` Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(` Mode: ${hasDist ? 'Static Production' : 'Vite Dev Middleware'}`);
     console.log(`=======================================================`);
   });
 }
