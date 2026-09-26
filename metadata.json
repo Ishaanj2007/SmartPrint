@@ -2,5 +2,7 @@
   "name": "Print Shop Automation System",
   "description": "Full-stack print shop automation system with mobile customer ordering, admin review dashboard, and Windows Python Print Agent.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

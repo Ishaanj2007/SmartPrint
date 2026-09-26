@@ -2,7 +2,11 @@
 # Compatible with Python 3.9+
 requests>=2.31.0
 
-# Windows printing system bridge (pywin32 provides win32print, win32api, win32ui)
+# Document rendering engines (renders PDF & Images into Windows Device Context / GDI bitmaps)
+Pillow>=10.0.0
+pypdfium2>=4.30.0
+
+# Windows printing system bridge (pywin32 provides win32print, win32ui, win32gui, win32con)
 # Note: pywin32 is Windows-specific. If testing on macOS/Linux in mock mode,
 # pywin32 is not required and mock printer mode is used automatically.
 pywin32>=306; sys_platform == 'win32'

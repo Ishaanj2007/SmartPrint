@@ -133,29 +133,37 @@ The agent is an independent Python application running in `print-agent/`:
 ## 8. How Python Communicates with Windows
 
 Inside `print-agent/printer.py`:
-1. `win32print.EnumPrinters(flags)` queries the Windows Print Spooler registry to discover installed drivers.
-2. `win32print.GetDefaultPrinter()` detects the current system default printer.
-3. `win32api.ShellExecute(0, "printto", file_path, f'"{printer_name}"', dir, 0)` invokes the Windows document handler without opening a GUI window (`SW_HIDE`).
-4. Windows accepts the print command and translates the PDF/image into print spooler records (`EMF` or `RAW`).
+1. `win32print.EnumPrinters(flags)` discovers installed printers and default printers.
+2. `win32print.OpenPrinter()` queries driver properties, port mapping (`USB002`), and spooler health.
+3. Native `pDevMode.Copies = copies` configures the driver directly, spooling a single job rather than multiple fragmented requests.
+4. `win32ui.CreateDC()` creates an authentic Windows Printer Device Context (DC) bound to the target printer.
+5. Documents are rendered directly into the Device Context:
+   - **PDF:** Rendered to crisp 300 DPI GDI bitmaps via Google PDFium (`pypdfium2`).
+   - **Images (JPG, PNG):** Rendered to GDI DIBs via `Pillow (PIL.ImageWin)`.
+6. `pdc.StartDoc()`, `pdc.StartPage()`, `dib.draw()`, and `pdc.EndPage()` / `pdc.EndDoc()` deliver the rendered pages directly to `spoolsv.exe`.
 
 ---
 
 ## 9. How Windows Communicates with the Printer
 
 ```
-Windows Print Spooler Service (spoolsv.exe)
+Python Agent (pypdfium2 / Pillow)
                  │
                  ▼
-         Printer Driver
- (Translates document into PCL / PostScript / ESC/P-R)
+Windows GDI Device Context (`win32ui`)
                  │
                  ▼
-          Windows Port
- (USB001 / TCP/IP 9100 / WSD / Bluetooth)
+Windows Print Spooler Service (`spoolsv.exe`)
                  │
                  ▼
-          Physical Printer
- (Prints physical pages from paper tray)
+EPSON Printer Driver (ESC/P-R)
+(Translates GDI commands into ESC/P-R printer raster stream)
+                 │
+                 ▼
+Windows USB Port (`USB002`)
+                 │
+                 ▼
+Physical EPSON L8050 Printer
 ```
 
 ---
@@ -172,7 +180,7 @@ Windows Print Spooler Service (spoolsv.exe)
 
 ---
 
-## 11. How to Install pywin32
+## 11. How to Install Dependencies
 
 On the shop's Windows PC:
 ```cmd
@@ -181,7 +189,7 @@ pip install -r requirements.txt
 ```
 Or directly:
 ```cmd
-pip install requests pywin32
+pip install requests pywin32 Pillow pypdfium2
 ```
 
 ---
