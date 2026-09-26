@@ -353,7 +353,7 @@ Examples:
     parser.add_argument("--list-printers", action="store_true", help="List installed printers on this machine")
     parser.add_argument("--mock", action="store_true", help="Force mock print mode (no physical paper consumed)")
     parser.add_argument("--loop", action="store_true", help="Run continuous background polling loop")
-    parser.add_argument("--server", default=None, help="Override server URL (e.g. https://ais-dev-...app)")
+    parser.add_argument("--server", default=None, help="Override server URL (e.g. http://localhost:3000)")
     parser.add_argument("--cookie", default=None, help="Session cookie if connecting to protected development server")
     parser.add_argument("--config", default="config.json", help="Path to config.json file (default: config.json)")
 

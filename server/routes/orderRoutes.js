@@ -1,7 +1,7 @@
 import { Router } from "express";
 import multer from "multer";
-import { OrderController } from "../controllers/orderController.ts";
-import { MAX_FILE_SIZE_BYTES } from "../storage/storage.ts";
+import { OrderController } from "../controllers/orderController.js";
+import { MAX_FILE_SIZE_BYTES } from "../storage/storage.js";
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {

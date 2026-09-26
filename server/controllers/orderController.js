@@ -1,15 +1,18 @@
-import { OrderService } from "../services/orderService.ts";
-import { StorageService } from "../storage/storage.ts";
+import { OrderService } from "../services/orderService.js";
+import { StorageService } from "../storage/storage.js";
 class OrderController {
   static async createOrder(req, res) {
     try {
-      const { customerName, customerPhone, customerNotes, defaultSettings } = req.body;
-      const uploadedFiles = req.files;
-      if (!uploadedFiles || uploadedFiles.length === 0) {
-        res.status(400).json({ error: "Please upload at least one document." });
-        return;
-      }
-      let parsedSettings = {
+      const {
+        customerName,
+        customerPhone,
+        customerNotes,
+        defaultSettings,
+        files: jsonFilesInput,
+        jsonFiles: alternativeJsonFiles
+      } = req.body;
+      const jsonFiles = alternativeJsonFiles || jsonFilesInput;
+      let parsedDefaultSettings = {
         paperSize: "A4",
         colorMode: "BW",
         sides: "SINGLE",
@@ -18,29 +21,65 @@ class OrderController {
       };
       if (defaultSettings) {
         try {
-          parsedSettings = typeof defaultSettings === "string" ? JSON.parse(defaultSettings) : defaultSettings;
+          const parsed = typeof defaultSettings === "string" ? JSON.parse(defaultSettings) : defaultSettings;
+          parsedDefaultSettings = { ...parsedDefaultSettings, ...parsed };
         } catch (e) {
         }
       }
       const filesToProcess = [];
-      for (const file of uploadedFiles) {
-        const validation = StorageService.validateFile(file.mimetype, file.size);
-        if (!validation.valid) {
-          res.status(400).json({ error: validation.error });
-          return;
+      if (req.files && Array.isArray(req.files) && req.files.length > 0) {
+        for (const file of req.files) {
+          const validation = StorageService.validateFile(file.mimetype, file.size);
+          if (!validation.valid) {
+            res.status(400).json({ error: validation.error });
+            return;
+          }
+          const stored = StorageService.saveBuffer(
+            file.originalname,
+            file.mimetype,
+            file.buffer
+          );
+          filesToProcess.push({
+            ...stored,
+            pageCount: 1,
+            printSettings: parsedDefaultSettings
+          });
         }
-        const stored = StorageService.saveBuffer(file.originalname, file.mimetype, file.buffer);
-        filesToProcess.push({
-          originalFilename: stored.originalFilename,
-          storageFilename: stored.storageFilename,
-          storagePath: stored.storagePath,
-          mimeType: stored.mimeType,
-          fileSizeBytes: stored.fileSizeBytes,
-          pageCount: 1,
-          printSettings: parsedSettings
-        });
       }
-      const newOrder = await OrderService.createOrder({
+      if (jsonFiles && Array.isArray(jsonFiles) && jsonFiles.length > 0) {
+        for (const jf of jsonFiles) {
+          const rawBase64 = jf.base64Data || jf.fileBase64 || jf.data || jf.content;
+          if (!rawBase64 || !jf.filename || !jf.mimeType) {
+            continue;
+          }
+          const buffer = Buffer.from(rawBase64.replace(/^data:.*,/, ""), "base64");
+          const validation = StorageService.validateFile(jf.mimeType, buffer.length);
+          if (!validation.valid) {
+            res.status(400).json({ error: validation.error });
+            return;
+          }
+          const stored = StorageService.saveBuffer(jf.filename, jf.mimeType, buffer);
+          const itemSettings = jf.printSettings ? { ...parsedDefaultSettings, ...jf.printSettings } : parsedDefaultSettings;
+          filesToProcess.push({
+            ...stored,
+            pageCount: jf.pageCount || 1,
+            printSettings: itemSettings
+          });
+        }
+      }
+      if (filesToProcess.length === 0) {
+        res.status(400).json({
+          error: "No valid documents uploaded. Please provide at least one PDF, JPG, or PNG file."
+        });
+        return;
+      }
+      if (filesToProcess.length > 10) {
+        res.status(400).json({
+          error: "Maximum 10 files allowed per print order."
+        });
+        return;
+      }
+      const order = OrderService.createOrder({
         customerName,
         customerPhone,
         customerNotes,
@@ -48,42 +87,31 @@ class OrderController {
       });
       res.status(201).json({
         success: true,
-        orderId: newOrder.id,
-        publicOrderId: newOrder.publicOrderId,
-        status: newOrder.status,
-        order: newOrder
+        orderId: order.id,
+        publicOrderId: order.publicOrderId,
+        status: order.status,
+        order
       });
     } catch (error) {
       console.error("[ORDER] Error creating order:", error);
-      res.status(500).json({ error: error.message || "Failed to submit order" });
+      res.status(500).json({
+        error: error.message || "Internal server error while creating order"
+      });
     }
   }
   static async getOrderStatus(req, res) {
     try {
       const { publicOrderId } = req.params;
-      const order = await OrderService.getOrderByPublicId(publicOrderId) || await OrderService.getOrderById(publicOrderId);
+      const order = OrderService.getOrderByPublicId(publicOrderId) || OrderService.getOrderById(publicOrderId);
       if (!order) {
-        res.status(404).json({ error: `Order '${publicOrderId}' not found.` });
+        res.status(404).json({
+          error: `Order '${publicOrderId}' not found. Please verify your Order ID.`
+        });
         return;
       }
       res.json({
         success: true,
-        order: {
-          id: order.id,
-          publicOrderId: order.publicOrderId,
-          status: order.status,
-          customerName: order.customerName,
-          totalFiles: order.totalFiles,
-          files: order.files.map((f) => ({
-            id: f.id,
-            originalFilename: f.originalFilename,
-            fileSizeBytes: f.fileSizeBytes,
-            mimeType: f.mimeType,
-            printSettings: f.printSettings
-          })),
-          createdAt: order.createdAt,
-          updatedAt: order.updatedAt
-        }
+        order
       });
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -92,7 +120,7 @@ class OrderController {
   static async getFile(req, res) {
     try {
       const { orderId, fileId } = req.params;
-      const order = await OrderService.getOrderById(orderId);
+      const order = OrderService.getOrderById(orderId) || OrderService.getOrderByPublicId(orderId);
       if (!order) {
         res.status(404).json({ error: "Order not found" });
         return;
@@ -104,10 +132,11 @@ class OrderController {
       }
       const filePath = StorageService.resolveFilePath(file.storageFilename);
       if (!filePath) {
-        res.status(404).json({ error: "File data missing" });
+        res.status(404).json({ error: "File on disk was removed or expired" });
         return;
       }
       res.setHeader("Content-Type", file.mimeType);
+      res.setHeader("Content-Disposition", `inline; filename="${encodeURIComponent(file.originalFilename)}"`);
       res.sendFile(filePath);
     } catch (error) {
       res.status(500).json({ error: error.message });

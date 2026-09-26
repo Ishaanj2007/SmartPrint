@@ -231,7 +231,7 @@ export function AdminDashboard() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter password (default: xerox123)"
+                placeholder="Enter admin password"
                 required
                 className="w-full px-3 py-2 text-sm bg-zinc-50 rounded-xl border border-zinc-200 focus:outline-none focus:ring-2 focus:ring-zinc-900/10"
               />

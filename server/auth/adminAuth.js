@@ -1,6 +1,6 @@
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || "admin";
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "xerox123";
-const ADMIN_TOKEN = process.env.ADMIN_TOKEN || "admin_session_secret_token_8899";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
+const ADMIN_TOKEN = process.env.ADMIN_TOKEN || "local_dev_admin_session_token";
 function requireAdminAuth(req, res, next) {
   const authHeader = req.headers["authorization"];
   const sessionToken = req.headers["x-admin-token"];

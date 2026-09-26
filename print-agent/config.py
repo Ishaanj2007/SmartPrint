@@ -41,7 +41,7 @@ class AgentConfig:
         # Environment variables take precedence over config.json
         server_url = os.getenv("SERVER_URL", data.get("server_url", "http://localhost:3000"))
         agent_id = os.getenv("AGENT_ID", data.get("agent_id", "SHOP_001"))
-        agent_token = os.getenv("AGENT_TOKEN", data.get("agent_token", "agent_secret_token_123"))
+        agent_token = os.getenv("AGENT_TOKEN", data.get("agent_token", "YOUR_AGENT_SECRET_TOKEN"))
         printer_name = os.getenv("PRINTER_NAME", data.get("printer_name", "DEFAULT"))
         poll_interval = int(os.getenv("POLL_INTERVAL", data.get("poll_interval", 3)))
         heartbeat_interval = int(os.getenv("HEARTBEAT_INTERVAL", data.get("heartbeat_interval", 10)))

@@ -1,0 +1,58 @@
+{
+  "orders": {
+    "sample-ord-001": {
+      "id": "sample-ord-001",
+      "publicOrderId": "PS-20260926-001",
+      "status": "PENDING",
+      "customerName": "Alex Customer",
+      "customerPhone": "+1-555-0199",
+      "customerNotes": "Please print color on A4 single-sided. 2 copies.",
+      "totalFiles": 1,
+      "files": [
+        {
+          "id": "file-sample-001",
+          "orderId": "sample-ord-001",
+          "originalFilename": "project_presentation.pdf",
+          "storageFilename": "sample_project_presentation.pdf",
+          "storagePath": "sample_project_presentation.pdf",
+          "mimeType": "application/pdf",
+          "fileSizeBytes": 245600,
+          "pageCount": 6,
+          "printSettings": {
+            "paperSize": "A4",
+            "colorMode": "COLOR",
+            "sides": "SINGLE",
+            "copies": 2,
+            "pageRange": "ALL"
+          },
+          "createdAt": "2026-09-26T13:54:04.426Z"
+        }
+      ],
+      "createdAt": "2026-09-26T13:54:04.426Z",
+      "updatedAt": "2026-09-26T13:54:04.426Z"
+    }
+  },
+  "agents": {
+    "SHOP_001": {
+      "id": "SHOP_001",
+      "name": "Counter Main Windows PC",
+      "token": "YOUR_AGENT_SECRET_TOKEN",
+      "configuredPrinter": "EPSON L8050 Series",
+      "isActive": true,
+      "lastHeartbeatAt": "2026-09-26T14:53:59.425Z",
+      "currentStatus": "IDLE",
+      "printMode": "windows",
+      "systemInfo": {
+        "os": "Windows 10",
+        "printer": "EPSON L8050 Series",
+        "port": "USB002"
+      },
+      "createdAt": "2026-09-26T14:54:04.426Z",
+      "updatedAt": "2026-09-26T14:54:04.426Z"
+    }
+  },
+  "auditLogs": [],
+  "nextDailySequence": {
+    "20260926": 2
+  }
+}

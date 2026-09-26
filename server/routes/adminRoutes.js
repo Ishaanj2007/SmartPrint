@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { AdminController } from "../controllers/adminController.ts";
-import { requireAdminAuth } from "../auth/adminAuth.ts";
+import { AdminController } from "../controllers/adminController.js";
+import { requireAdminAuth } from "../auth/adminAuth.js";
 const adminRoutes = Router();
 adminRoutes.post("/login", AdminController.login);
 adminRoutes.use(requireAdminAuth);

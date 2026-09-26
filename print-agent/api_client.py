@@ -64,11 +64,9 @@ class AgentAPIClient:
             diagnostic_hint = ""
             if is_cookie_check or is_google_signin:
                 diagnostic_hint = (
-                    "\nDIAGNOSIS: Google AI Studio development URL (ais-dev-...) requires Google session authentication.\n"
-                    "Requests from outside a signed-in browser receive the Google 'Cookie check' or login page.\n"
-                    "Resolution options:\n"
-                    "  1. Set 'session_cookie' in config.json with your browser session cookies.\n"
-                    "  2. Or if running on the counter PC with local server: use 'http://localhost:3000'."
+                    "\nDIAGNOSIS: External endpoint requires interactive authentication.\n"
+                    "Resolution:\n"
+                    "  When developing locally, ensure 'server_url' is set to 'http://localhost:3000'."
                 )
 
             raise AgentAPIError(

@@ -1,9 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 
-// Hardcoded or environment configurable admin credentials
+// Environment-configurable prototype admin credentials
 export const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
-export const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'xerox123';
-export const ADMIN_TOKEN = process.env.ADMIN_TOKEN || 'admin_session_secret_token_8899';
+export const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
+export const ADMIN_TOKEN = process.env.ADMIN_TOKEN || 'local_dev_admin_session_token';
 
 export function requireAdminAuth(req: Request, res: Response, next: NextFunction): void {
   const authHeader = req.headers['authorization'];

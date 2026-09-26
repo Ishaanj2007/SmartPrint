@@ -1,355 +1,200 @@
-import { eq, desc } from "drizzle-orm";
-import { db as drizzleDb, pool } from "../../src/db/index.ts";
-import * as schema from "../../src/db/schema.ts";
-class CloudSqlDatabase {
-  /**
-   * Generates atomic public order IDs in the format PS-YYYYMMDD-001
-   */
-  async generatePublicOrderId() {
+import fs from "fs";
+import path from "path";
+const DB_DIR = path.resolve(process.cwd(), "data");
+const DB_FILE = path.join(DB_DIR, "db.json");
+class Database {
+  constructor() {
+    this.saveTimeout = null;
+    // Mutex lock for atomic job claiming
+    this.claimingLock = false;
+    this.data = {
+      orders: {},
+      agents: {},
+      auditLogs: [],
+      nextDailySequence: {}
+    };
+    this.init();
+  }
+  init() {
     try {
-      const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10).replace(/-/g, "");
-      const client = await pool.connect();
-      try {
-        await client.query("BEGIN");
-        const res = await client.query(
-          `INSERT INTO daily_sequences (date_str, next_seq)
-           VALUES ($1, 2)
-           ON CONFLICT (date_str)
-           DO UPDATE SET next_seq = daily_sequences.next_seq + 1
-           RETURNING next_seq - 1 AS current_seq;`,
-          [today]
-        );
-        await client.query("COMMIT");
-        const seq = res.rows[0].current_seq;
-        const formatted = String(seq).padStart(3, "0");
-        return `PS-${today}-${formatted}`;
-      } catch (err) {
-        await client.query("ROLLBACK");
-        throw err;
-      } finally {
-        client.release();
+      if (!fs.existsSync(DB_DIR)) {
+        fs.mkdirSync(DB_DIR, { recursive: true });
+      }
+      if (fs.existsSync(DB_FILE)) {
+        const raw = fs.readFileSync(DB_FILE, "utf-8");
+        this.data = JSON.parse(raw);
+      } else {
+        this.seedDefaults();
+        this.saveImmediately();
       }
     } catch (e) {
-      console.error("[DB] Error generating atomic public order ID:", e);
-      const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10).replace(/-/g, "");
-      const randomSeq = Math.floor(100 + Math.random() * 900);
-      return `PS-${today}-${randomSeq}`;
+      console.warn("[DB] Failed to load db.json, using fresh store:", e);
+      this.seedDefaults();
     }
   }
-  /**
-   * Retrieves all orders with their attached files, sorted newest first
-   */
-  async getOrders(statusFilter) {
-    try {
-      const orderRows = await drizzleDb.query.orders.findMany({
-        where: statusFilter && statusFilter !== "ALL" ? eq(schema.orders.status, statusFilter) : void 0,
-        orderBy: [desc(schema.orders.createdAt)],
-        with: {
-          files: true
+  seedDefaults() {
+    const defaultAgent = {
+      id: "SHOP_001",
+      name: "Counter Main Windows PC",
+      token: process.env.AGENT_TOKEN || "YOUR_AGENT_SECRET_TOKEN",
+      configuredPrinter: "EPSON L8050 Series",
+      isActive: true,
+      lastHeartbeatAt: new Date(Date.now() - 5e3).toISOString(),
+      currentStatus: "IDLE",
+      printMode: "windows",
+      systemInfo: {
+        os: "Windows 10",
+        printer: "EPSON L8050 Series",
+        port: "USB002"
+      },
+      createdAt: (/* @__PURE__ */ new Date()).toISOString(),
+      updatedAt: (/* @__PURE__ */ new Date()).toISOString()
+    };
+    this.data.agents[defaultAgent.id] = defaultAgent;
+    const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10).replace(/-/g, "");
+    const sampleId1 = "sample-ord-001";
+    const samplePublicId1 = `PS-${today}-001`;
+    this.data.orders[sampleId1] = {
+      id: sampleId1,
+      publicOrderId: samplePublicId1,
+      status: "PENDING",
+      customerName: "Alex Customer",
+      customerPhone: "+1-555-0199",
+      customerNotes: "Please print color on A4 single-sided. 2 copies.",
+      totalFiles: 1,
+      files: [
+        {
+          id: "file-sample-001",
+          orderId: sampleId1,
+          originalFilename: "project_presentation.pdf",
+          storageFilename: "sample_project_presentation.pdf",
+          storagePath: "sample_project_presentation.pdf",
+          mimeType: "application/pdf",
+          fileSizeBytes: 245600,
+          pageCount: 6,
+          printSettings: {
+            paperSize: "A4",
+            colorMode: "COLOR",
+            sides: "SINGLE",
+            copies: 2,
+            pageRange: "ALL"
+          },
+          createdAt: new Date(Date.now() - 36e5).toISOString()
         }
-      });
-      return orderRows.map((r) => this.mapOrderRow(r, r.files));
-    } catch (error) {
-      console.error("[DB] Failed to query orders from Cloud SQL:", error);
-      throw new Error("Database query failed while fetching orders.", { cause: error });
-    }
+      ],
+      createdAt: new Date(Date.now() - 36e5).toISOString(),
+      updatedAt: new Date(Date.now() - 36e5).toISOString()
+    };
+    this.data.nextDailySequence[today] = 2;
   }
-  async getOrderById(id) {
-    try {
-      const orderRow = await drizzleDb.query.orders.findFirst({
-        where: eq(schema.orders.id, id),
-        with: {
-          files: true
-        }
-      });
-      if (!orderRow) return null;
-      return this.mapOrderRow(orderRow, orderRow.files);
-    } catch (error) {
-      console.error(`[DB] Failed to query order ${id}:`, error);
-      throw new Error(`Database query failed for order ${id}`, { cause: error });
-    }
+  scheduleSave() {
+    if (this.saveTimeout) return;
+    this.saveTimeout = setTimeout(() => {
+      this.saveImmediately();
+      this.saveTimeout = null;
+    }, 400);
   }
-  async getOrderByPublicId(publicOrderId) {
+  saveImmediately() {
     try {
-      const cleaned = publicOrderId.trim().toUpperCase();
-      const orderRow = await drizzleDb.query.orders.findFirst({
-        where: eq(schema.orders.publicOrderId, cleaned),
-        with: {
-          files: true
-        }
-      });
-      if (!orderRow) return null;
-      return this.mapOrderRow(orderRow, orderRow.files);
-    } catch (error) {
-      console.error(`[DB] Failed to query public order ${publicOrderId}:`, error);
-      throw new Error(`Database query failed for public order ${publicOrderId}`, { cause: error });
-    }
-  }
-  async saveOrder(order) {
-    try {
-      await drizzleDb.insert(schema.orders).values({
-        id: order.id,
-        publicOrderId: order.publicOrderId,
-        status: order.status,
-        customerName: order.customerName,
-        customerPhone: order.customerPhone,
-        customerNotes: order.customerNotes,
-        rejectionReason: order.rejectionReason,
-        failureReason: order.failureReason,
-        totalFiles: order.totalFiles,
-        claimedByAgent: order.claimedByAgent || null,
-        createdAt: new Date(order.createdAt),
-        updatedAt: new Date(order.updatedAt)
-      }).onConflictDoUpdate({
-        target: schema.orders.id,
-        set: {
-          status: order.status,
-          customerName: order.customerName,
-          customerPhone: order.customerPhone,
-          customerNotes: order.customerNotes,
-          rejectionReason: order.rejectionReason,
-          failureReason: order.failureReason,
-          totalFiles: order.totalFiles,
-          claimedByAgent: order.claimedByAgent || null,
-          updatedAt: new Date(order.updatedAt)
-        }
-      });
-      if (order.files && order.files.length > 0) {
-        for (const file of order.files) {
-          await drizzleDb.insert(schema.files).values({
-            id: file.id,
-            orderId: order.id,
-            originalFilename: file.originalFilename,
-            storageFilename: file.storageFilename,
-            storagePath: file.storagePath,
-            mimeType: file.mimeType,
-            fileSizeBytes: file.fileSizeBytes,
-            pageCount: file.pageCount || 1,
-            printSettings: file.printSettings,
-            createdAt: new Date(file.createdAt)
-          }).onConflictDoUpdate({
-            target: schema.files.id,
-            set: {
-              originalFilename: file.originalFilename,
-              storageFilename: file.storageFilename,
-              storagePath: file.storagePath,
-              mimeType: file.mimeType,
-              fileSizeBytes: file.fileSizeBytes,
-              pageCount: file.pageCount || 1,
-              printSettings: file.printSettings
-            }
-          });
-        }
+      if (!fs.existsSync(DB_DIR)) {
+        fs.mkdirSync(DB_DIR, { recursive: true });
       }
-      return order;
-    } catch (error) {
-      console.error("[DB] Failed to save order in Cloud SQL:", error);
-      throw new Error("Database query failed while saving order.", { cause: error });
+      fs.writeFileSync(DB_FILE, JSON.stringify(this.data, null, 2), "utf-8");
+    } catch (e) {
+      console.error("[DB] Error persisting db.json:", e);
     }
   }
-  async getApprovedOrders() {
-    try {
-      const orderRows = await drizzleDb.query.orders.findMany({
-        where: eq(schema.orders.status, "APPROVED"),
-        orderBy: [desc(schema.orders.createdAt)],
-        with: {
-          files: true
-        }
-      });
-      return orderRows.map((r) => this.mapOrderRow(r, r.files));
-    } catch (error) {
-      console.error("[DB] Failed to fetch approved orders:", error);
-      throw new Error("Database query failed while fetching approved jobs.", { cause: error });
-    }
+  // --- ORDER METHODS ---
+  generatePublicOrderId() {
+    const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10).replace(/-/g, "");
+    const currentSeq = this.data.nextDailySequence[today] || 1;
+    this.data.nextDailySequence[today] = currentSeq + 1;
+    this.scheduleSave();
+    const formatted = String(currentSeq).padStart(3, "0");
+    return `PS-${today}-${formatted}`;
+  }
+  getOrders() {
+    return Object.values(this.data.orders).sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }
+  getOrderById(id) {
+    return this.data.orders[id];
+  }
+  getOrderByPublicId(publicOrderId) {
+    const cleaned = publicOrderId.trim().toUpperCase();
+    return Object.values(this.data.orders).find(
+      (o) => o.publicOrderId.toUpperCase() === cleaned
+    );
+  }
+  saveOrder(order) {
+    this.data.orders[order.id] = order;
+    this.scheduleSave();
+    return order;
+  }
+  getApprovedOrders() {
+    return Object.values(this.data.orders).filter((o) => o.status === "APPROVED");
   }
   /**
    * ATOMIC JOB CLAIMING
-   * Uses SQL atomic condition UPDATE ... WHERE id = $1 AND status = 'APPROVED'
-   * If two agents attempt to claim simultaneously, exactly one succeeds and the other gets rowCount = 0.
+   * Ensures only ONE agent can claim an approved order.
+   * If two agents attempt to claim simultaneously, exactly one succeeds.
    */
   async claimApprovedOrder(orderId, agentId) {
-    const client = await pool.connect();
+    while (this.claimingLock) {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    this.claimingLock = true;
     try {
-      await client.query("BEGIN");
-      const now = /* @__PURE__ */ new Date();
-      const updateRes = await client.query(
-        `UPDATE orders
-         SET status = 'CLAIMED',
-             claimed_by_agent = $1,
-             updated_at = $2
-         WHERE id = $3 AND status = 'APPROVED'
-         RETURNING id;`,
-        [agentId, now, orderId]
-      );
-      if (updateRes.rowCount === 0) {
-        await client.query("ROLLBACK");
+      const order = this.data.orders[orderId];
+      if (!order || order.status !== "APPROVED") {
         return false;
       }
-      const auditId = `audit-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
-      await client.query(
-        `INSERT INTO audit_logs (id, order_id, previous_status, new_status, actor_type, actor_id, message, created_at)
-         VALUES ($1, $2, 'APPROVED', 'CLAIMED', 'PRINT_AGENT', $3, $4, $5);`,
-        [
-          auditId,
-          orderId,
-          agentId,
-          `Order atomically claimed by Print Agent ${agentId}`,
-          now
-        ]
-      );
-      await client.query("COMMIT");
+      order.status = "CLAIMED";
+      order.claimedByAgent = agentId;
+      order.updatedAt = (/* @__PURE__ */ new Date()).toISOString();
+      this.logAudit({
+        id: `audit-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+        orderId,
+        previousStatus: "APPROVED",
+        newStatus: "CLAIMED",
+        actorType: "PRINT_AGENT",
+        actorId: agentId,
+        message: `Order atomically claimed by Print Agent ${agentId}`,
+        createdAt: (/* @__PURE__ */ new Date()).toISOString()
+      });
+      this.scheduleSave();
       return true;
-    } catch (err) {
-      await client.query("ROLLBACK");
-      console.error(`[DB] Error during atomic claim for order ${orderId}:`, err);
-      return false;
     } finally {
-      client.release();
+      this.claimingLock = false;
     }
   }
-  // --- AGENT TELEMETRY & PERSISTENCE ---
-  async getAgent(agentId) {
-    try {
-      const agentRow = await drizzleDb.query.agents.findFirst({
-        where: eq(schema.agents.id, agentId)
-      });
-      if (!agentRow) return null;
-      return this.mapAgentRow(agentRow);
-    } catch (error) {
-      console.error(`[DB] Failed to query agent ${agentId}:`, error);
-      throw new Error(`Database query failed for agent ${agentId}`, { cause: error });
-    }
+  // --- AGENT METHODS ---
+  getAgent(agentId) {
+    return this.data.agents[agentId];
   }
-  async getAllAgents() {
-    try {
-      const agentRows = await drizzleDb.query.agents.findMany({
-        orderBy: [schema.agents.id]
-      });
-      return agentRows.map((r) => this.mapAgentRow(r));
-    } catch (error) {
-      console.error("[DB] Failed to query all agents:", error);
-      throw new Error("Database query failed while fetching agents.", { cause: error });
-    }
+  getAllAgents() {
+    return Object.values(this.data.agents);
   }
-  async saveAgent(agent) {
-    try {
-      await drizzleDb.insert(schema.agents).values({
-        id: agent.id,
-        name: agent.name,
-        token: agent.token,
-        configuredPrinter: agent.configuredPrinter,
-        isActive: agent.isActive,
-        lastHeartbeatAt: agent.lastHeartbeatAt ? new Date(agent.lastHeartbeatAt) : null,
-        currentStatus: agent.currentStatus,
-        printMode: agent.printMode || "windows",
-        systemInfo: agent.systemInfo || null,
-        createdAt: new Date(agent.createdAt),
-        updatedAt: new Date(agent.updatedAt)
-      }).onConflictDoUpdate({
-        target: schema.agents.id,
-        set: {
-          name: agent.name,
-          token: agent.token,
-          configuredPrinter: agent.configuredPrinter,
-          isActive: agent.isActive,
-          lastHeartbeatAt: agent.lastHeartbeatAt ? new Date(agent.lastHeartbeatAt) : null,
-          currentStatus: agent.currentStatus,
-          printMode: agent.printMode || "windows",
-          systemInfo: agent.systemInfo || null,
-          updatedAt: new Date(agent.updatedAt)
-        }
-      });
-      return agent;
-    } catch (error) {
-      console.error("[DB] Failed to persist agent in Cloud SQL:", error);
-      throw new Error("Database query failed while saving agent.", { cause: error });
-    }
+  saveAgent(agent) {
+    this.data.agents[agent.id] = agent;
+    this.scheduleSave();
+    return agent;
   }
   // --- AUDIT LOGS ---
-  async logAudit(log) {
-    try {
-      await drizzleDb.insert(schema.auditLogs).values({
-        id: log.id,
-        orderId: log.orderId,
-        previousStatus: log.previousStatus || null,
-        newStatus: log.newStatus,
-        actorType: log.actorType,
-        actorId: log.actorId || null,
-        message: log.message || null,
-        createdAt: new Date(log.createdAt)
-      });
-    } catch (error) {
-      console.warn("[DB] Could not write audit log to Cloud SQL:", error);
+  logAudit(log) {
+    this.data.auditLogs.push(log);
+    if (this.data.auditLogs.length > 1e3) {
+      this.data.auditLogs = this.data.auditLogs.slice(-1e3);
     }
+    this.scheduleSave();
   }
-  async getAuditLogs(orderId) {
-    try {
-      const logs = await drizzleDb.query.auditLogs.findMany({
-        where: orderId ? eq(schema.auditLogs.orderId, orderId) : void 0,
-        orderBy: [desc(schema.auditLogs.createdAt)],
-        limit: 1e3
-      });
-      return logs.map((l) => ({
-        id: l.id,
-        orderId: l.orderId,
-        previousStatus: l.previousStatus || void 0,
-        newStatus: l.newStatus,
-        actorType: l.actorType,
-        actorId: l.actorId || void 0,
-        message: l.message || void 0,
-        createdAt: l.createdAt.toISOString()
-      }));
-    } catch (error) {
-      console.error("[DB] Failed to get audit logs:", error);
-      return [];
-    }
-  }
-  // --- ROW MAPPERS ---
-  mapOrderRow(r, fileRows) {
-    return {
-      id: r.id,
-      publicOrderId: r.publicOrderId,
-      status: r.status,
-      customerName: r.customerName || void 0,
-      customerPhone: r.customerPhone || void 0,
-      customerNotes: r.customerNotes || void 0,
-      rejectionReason: r.rejectionReason || void 0,
-      failureReason: r.failureReason || void 0,
-      totalFiles: r.totalFiles,
-      claimedByAgent: r.claimedByAgent || void 0,
-      files: (fileRows || []).map((f) => ({
-        id: f.id,
-        orderId: f.orderId,
-        originalFilename: f.originalFilename,
-        storageFilename: f.storageFilename,
-        storagePath: f.storagePath,
-        mimeType: f.mimeType,
-        fileSizeBytes: f.fileSizeBytes,
-        pageCount: f.pageCount,
-        printSettings: f.printSettings,
-        createdAt: f.createdAt.toISOString()
-      })),
-      createdAt: r.createdAt.toISOString(),
-      updatedAt: r.updatedAt.toISOString()
-    };
-  }
-  mapAgentRow(r) {
-    return {
-      id: r.id,
-      name: r.name,
-      token: r.token,
-      configuredPrinter: r.configuredPrinter,
-      isActive: r.isActive,
-      lastHeartbeatAt: r.lastHeartbeatAt ? r.lastHeartbeatAt.toISOString() : void 0,
-      currentStatus: r.currentStatus,
-      printMode: r.printMode || "windows",
-      systemInfo: r.systemInfo || void 0,
-      createdAt: r.createdAt.toISOString(),
-      updatedAt: r.updatedAt.toISOString()
-    };
+  getAuditLogs(orderId) {
+    if (!orderId) return this.data.auditLogs;
+    return this.data.auditLogs.filter((l) => l.orderId === orderId);
   }
 }
-const db = new CloudSqlDatabase();
+const db = new Database();
 export {
   db
 };

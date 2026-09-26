@@ -1,17 +1,29 @@
+# Dependencies & Build Output
 node_modules/
 build/
 dist/
 coverage/
 .DS_Store
 *.log
-.env*
+
+# Environment variables
+.env
+.env.*
 !.env.example
-uploads/
-spool/
-data/
-*.sqlite
-*.db
+
+# Local Spool and Upload storage
+uploads/*
+!uploads/.gitkeep
+spool/*
+!spool/.gitkeep
+
+# Python agent cache & local overrides
 print-agent/__pycache__/
+print-agent/*.pyc
 print-agent/*.log
 print-agent/test_download*
-test_sample.pdf
+print-agent/config.local.json
+
+# Local databases & temp files
+*.sqlite
+*.db
