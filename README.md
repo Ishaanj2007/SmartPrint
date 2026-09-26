@@ -120,7 +120,7 @@ The agent is an independent Python application running in `print-agent/`:
 ## 7. How Python Communicates with the Backend
 
 1. **Authentication:**
-   Sends `X-Agent-ID: SHOP_001` and `X-Agent-Token: agent_secret_token_123`.
+   Sends `X-Agent-ID: SHOP_001` and `X-Agent-Token: <YOUR_AGENT_SECRET_TOKEN>`.
 2. **Heartbeat:**
    Periodically (every 10s) calls `POST /api/agent/heartbeat` with system diagnostics.
 3. **Polling:**
@@ -201,7 +201,7 @@ Edit `print-agent/config.json`:
 {
   "server_url": "https://ais-dev-27dl5fsfimydc5itwuypjl-1066464352740.asia-southeast1.run.app",
   "agent_id": "SHOP_001",
-  "agent_token": "agent_secret_token_123",
+  "agent_token": "<YOUR_AGENT_SECRET_TOKEN>",
   "printer_name": "EPSON L8050 Series",
   "poll_interval": 3,
   "heartbeat_interval": 10,

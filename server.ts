@@ -1,4 +1,4 @@
-import express, { Request, Response } from 'express';
+import express, { type Request, type Response } from 'express';
 import path from 'path';
 import fs from 'fs';
 import { orderRoutes } from './server/routes/orderRoutes.js';
@@ -37,7 +37,6 @@ app.get('/api/system/info', (req: Request, res: Response) => {
     customerQrUrl: appUrl,
     defaultAgent: {
       id: defaultAgent?.id || 'SHOP_001',
-      token: defaultAgent?.token || 'agent_secret_token_123',
       printer: defaultAgent?.configuredPrinter || 'DEFAULT',
     },
     supportedFormats: ['PDF', 'JPG', 'JPEG', 'PNG'],

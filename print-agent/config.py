@@ -7,6 +7,7 @@ import json
 import os
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Optional
 
 
 @dataclass
@@ -19,6 +20,7 @@ class AgentConfig:
     heartbeat_interval: int
     print_mode: str
     temp_dir: str
+    session_cookie: Optional[str] = None
 
     @classmethod
     def load(cls, config_path: str = "config.json") -> "AgentConfig":
@@ -45,6 +47,7 @@ class AgentConfig:
         heartbeat_interval = int(os.getenv("HEARTBEAT_INTERVAL", data.get("heartbeat_interval", 10)))
         print_mode = os.getenv("PRINT_MODE", data.get("print_mode", "mock" if os.name != "nt" else "windows"))
         temp_dir = os.getenv("TEMP_DIR", data.get("temp_dir", "./spool"))
+        session_cookie = os.getenv("SESSION_COOKIE", data.get("session_cookie"))
 
         # Ensure trailing slash removed from server_url
         server_url = server_url.rstrip("/")
@@ -61,4 +64,5 @@ class AgentConfig:
             heartbeat_interval=heartbeat_interval,
             print_mode=print_mode,
             temp_dir=temp_dir,
+            session_cookie=session_cookie,
         )

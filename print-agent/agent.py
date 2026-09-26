@@ -224,6 +224,8 @@ def run_daemon_loop(config: AgentConfig):
                                 download_url=download_url,
                                 filename=f"spool_{public_order_id}_{filename}",
                                 agent_token=config.agent_token,
+                                agent_id=config.agent_id,
+                                session_cookie=config.session_cookie,
                                 expected_size=expected_size
                             )
 
@@ -289,6 +291,7 @@ Examples:
     parser.add_argument("--mock", action="store_true", help="Force mock print mode (no physical paper consumed)")
     parser.add_argument("--loop", action="store_true", help="Run continuous background polling loop")
     parser.add_argument("--server", default=None, help="Override server URL (e.g. https://ais-dev-...app)")
+    parser.add_argument("--cookie", default=None, help="Session cookie if connecting to protected development server")
     parser.add_argument("--config", default="config.json", help="Path to config.json file (default: config.json)")
 
     args = parser.parse_args()
@@ -297,6 +300,8 @@ Examples:
     cfg = AgentConfig.load(args.config)
     if args.server:
         cfg.server_url = args.server.rstrip("/")
+    if args.cookie:
+        cfg.session_cookie = args.cookie
     if args.printer:
         cfg.printer_name = args.printer
     if args.mock:

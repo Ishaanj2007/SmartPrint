@@ -28,6 +28,7 @@ export function AgentHub({ onOrderUpdated }: AgentHubProps) {
 
   // In-Browser Agent Simulator state
   const [isSimulating, setIsSimulating] = useState(false);
+  const [agentToken, setAgentToken] = useState<string>('');
   const [simulatedLogs, setSimulatedLogs] = useState<Array<{ timestamp: string; text: string; type?: string }>>([
     {
       timestamp: new Date().toLocaleTimeString(),
@@ -60,13 +61,13 @@ export function AgentHub({ onOrderUpdated }: AgentHubProps) {
             headers: {
               'Content-Type': 'application/json',
               'X-Agent-ID': 'SHOP_001',
-              'X-Agent-Token': 'agent_secret_token_123',
+              'X-Agent-Token': agentToken || '',
             },
             body: JSON.stringify({
               status: 'IDLE',
-              printer_name: 'EPSON L3150 Series (Simulated)',
+              printer_name: 'EPSON L8050 Series (Simulated)',
               print_mode: 'mock',
-              system_info: { os: 'Windows 11 (Simulated)', python: '3.10.12' },
+              system_info: { os: 'Windows 10 (Simulated)', python: '3.11' },
             }),
           });
 
@@ -74,7 +75,7 @@ export function AgentHub({ onOrderUpdated }: AgentHubProps) {
           const res = await fetch('/api/agent/jobs', {
             headers: {
               'X-Agent-ID': 'SHOP_001',
-              'X-Agent-Token': 'agent_secret_token_123',
+              'X-Agent-Token': agentToken || '',
             },
           });
           const data = await res.json();
@@ -92,7 +93,7 @@ export function AgentHub({ onOrderUpdated }: AgentHubProps) {
                 headers: {
                   'Content-Type': 'application/json',
                   'X-Agent-ID': 'SHOP_001',
-                  'X-Agent-Token': 'agent_secret_token_123',
+                  'X-Agent-Token': agentToken || '',
                 },
                 body: JSON.stringify({ agent_id: 'SHOP_001' }),
               });
@@ -110,7 +111,7 @@ export function AgentHub({ onOrderUpdated }: AgentHubProps) {
                 headers: {
                   'Content-Type': 'application/json',
                   'X-Agent-ID': 'SHOP_001',
-                  'X-Agent-Token': 'agent_secret_token_123',
+                  'X-Agent-Token': agentToken || '',
                 },
               });
               addLog(`[AGENT] 🖨️ Job #${job.publicOrderId} marked as PRINTING in queue.`, 'info');
@@ -120,7 +121,7 @@ export function AgentHub({ onOrderUpdated }: AgentHubProps) {
                 addLog(`[AGENT] 📥 Downloading '${file.originalFilename}' (${(file.fileSizeBytes / 1024).toFixed(0)} KB)...`);
                 await new Promise((r) => setTimeout(r, 800));
 
-                addLog(`[AGENT] 📄 Handing '${file.originalFilename}' to Windows Spooler -> EPSON L3150...`);
+                addLog(`[AGENT] 📄 Handing '${file.originalFilename}' to Windows Spooler -> EPSON L8050...`);
                 await new Promise((r) => setTimeout(r, 1200));
 
                 addLog(`[AGENT] ⚡ Driver processed ${file.printSettings.copies} copy/copies (${file.printSettings.paperSize}, ${file.printSettings.colorMode}).`);
@@ -132,7 +133,7 @@ export function AgentHub({ onOrderUpdated }: AgentHubProps) {
                 headers: {
                   'Content-Type': 'application/json',
                   'X-Agent-ID': 'SHOP_001',
-                  'X-Agent-Token': 'agent_secret_token_123',
+                  'X-Agent-Token': agentToken || '',
                 },
                 body: JSON.stringify({
                   details: { simulated: true, completedAt: new Date().toISOString() },
@@ -204,11 +205,11 @@ class WindowsPrinterEngine:
       code: `{
   "server_url": "http://localhost:3000",
   "agent_id": "SHOP_001",
-  "agent_token": "agent_secret_token_123",
-  "printer_name": "DEFAULT",
+  "agent_token": "YOUR_AGENT_SECRET_TOKEN",
+  "printer_name": "EPSON L8050 Series",
   "poll_interval": 3,
   "heartbeat_interval": 10,
-  "print_mode": "mock",
+  "print_mode": "windows",
   "temp_dir": "./spool"
 }`,
     },

@@ -25,6 +25,8 @@ class FileDownloader:
         download_url: str,
         filename: str,
         agent_token: str,
+        agent_id: Optional[str] = None,
+        session_cookie: Optional[str] = None,
         expected_size: Optional[int] = None,
         expected_sha256: Optional[str] = None
     ) -> Path:
@@ -35,14 +37,26 @@ class FileDownloader:
         dest_path = self.temp_dir / filename
         headers = {
             "Authorization": f"Bearer {agent_token}",
+            "X-Agent-Token": agent_token,
             "User-Agent": "XeroxPrintAgent/1.0",
         }
+        if agent_id:
+            headers["X-Agent-ID"] = agent_id
+        if session_cookie:
+            headers["Cookie"] = session_cookie
 
         print(f"[DOWNLOAD] Fetching file from: {download_url}")
         print(f"[DOWNLOAD] Destination: {dest_path}")
 
         try:
             with requests.get(download_url, headers=headers, stream=True, timeout=30) as r:
+                content_type = r.headers.get("Content-Type", "")
+                if "text/html" in content_type:
+                    first_bytes = r.raw.read(300).decode("utf-8", errors="replace")
+                    raise DownloaderError(
+                        f"Download failed: Server returned HTML page ({r.status_code}) instead of document content.\n"
+                        f"Snippet: {first_bytes.strip()}"
+                    )
                 r.raise_for_status()
                 hasher = hashlib.sha256()
                 downloaded_bytes = 0
