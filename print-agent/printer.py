@@ -1,8 +1,8 @@
 """
 Windows Printing Engine for the Xerox Print Shop Agent.
 
-Replaces fragile ShellExecute('printto') with robust native Windows GDI/DEVMODE
-spooler architecture using win32print, win32ui, and win32gui.
+Direct native Windows GDI/DEVMODE spooler architecture using win32print, win32ui,
+and win32gui to deliver rendered document bitmaps directly to spoolsv.exe.
 
 Execution chain:
 Python Agent -> Document Renderer (pypdfium2/Pillow) -> Windows Device Context (win32ui DC)
@@ -238,12 +238,13 @@ class WindowsPrinterEngine:
     ) -> Dict[str, Any]:
         """
         Directly prints documents to the Windows Print Spooler using Windows GDI Device Contexts.
+        Uses native win32ui CreatePrinterDC and pypdfium2 rasterization.
         
         Execution:
         1. Query printer capabilities (driver, port, status).
-        2. Configure DEVMODE for native copies (dmCopies = copies).
+        2. Configure DEVMODE for paper size (A4), orientation, color, and copies.
         3. Create GDI Printer DC (win32ui.CreateDC()).
-        4. Render pages to GDI Device Context via win32ui / win32gui.
+        4. Render pages to GDI Device Context via pypdfium2/Pillow and win32ui/ImageWin.
         5. Windows Spooler sends rendered pages to Epson printer driver.
         """
         driver_name = "Unknown"
@@ -251,8 +252,13 @@ class WindowsPrinterEngine:
         spooler_status = 0
         hprinter = None
 
+        paper_size = settings.get("paper_size", "A4").upper()
+        color_mode = settings.get("color_mode", "BW").upper()
+        sides = settings.get("sides", "SINGLE").upper()
+
         try:
             # 1. Inspect printer details via win32print
+            print(f"[WINDOWS] [1/5] Opening Windows printer handle: win32print.OpenPrinter('{printer_name}')...")
             hprinter = win32print.OpenPrinter(printer_name)
             try:
                 printer_info = win32print.GetPrinter(hprinter, 2)
@@ -262,66 +268,91 @@ class WindowsPrinterEngine:
             except Exception as e:
                 print(f"[WINDOWS] [WARN] Could not read extended printer properties: {e}")
 
-            print(f"[WINDOWS] Printer Driver: {driver_name}")
-            print(f"[WINDOWS] Printer Port:   {port_name}")
-            print(f"[WINDOWS] Spooler Status: {spooler_status} (0 = Ready/Idle)")
+            print(f"[WINDOWS] Selected Printer: {printer_name}")
+            print(f"[WINDOWS] Printer Driver:   {driver_name}")
+            print(f"[WINDOWS] Printer Port:     {port_name}")
+            print(f"[WINDOWS] Spooler Status:   {spooler_status} (0 = Ready/Idle)")
 
-            # 2. Configure native DEVMODE for copies
+            # 2. Configure native DEVMODE for copies, paper size, and color
+            print(f"[WINDOWS] [2/5] Configuring printer DEVMODE structure...")
             devmode = None
             native_copies_configured = False
             try:
                 p_devmode = printer_info.get("pDevMode")
                 if p_devmode:
+                    # Configure copies
                     p_devmode.Copies = copies
-                    devmode = p_devmode
                     native_copies_configured = True
-                    print(f"[WINDOWS] Native DEVMODE configured: {copies} cop(y/ies) in single print job.")
+
+                    # Configure paper size: DMPAPER_A4 = 9
+                    if paper_size == "A4":
+                        p_devmode.PaperSize = 9  # win32con.DMPAPER_A4
+                        p_devmode.Fields |= 0x00000002  # DM_PAPERSIZE
+
+                    # Configure color mode: DMCOLOR_MONOCHROME = 1, DMCOLOR_COLOR = 2
+                    if color_mode in ["BW", "MONOCHROME", "GRAYSCALE"]:
+                        p_devmode.Color = 1  # DMCOLOR_MONOCHROME
+                        p_devmode.Fields |= 0x00000800  # DM_COLOR
+                    elif color_mode == "COLOR":
+                        p_devmode.Color = 2  # DMCOLOR_COLOR
+                        p_devmode.Fields |= 0x00000800  # DM_COLOR
+
+                    # Configure duplex if supported: DMDUP_SIMPLEX = 1
+                    if sides in ["SINGLE", "SIMPLEX"]:
+                        p_devmode.Duplex = 1  # DMDUP_SIMPLEX
+                        p_devmode.Fields |= 0x00001000  # DM_DUPLEX
+
+                    devmode = p_devmode
+                    print(f"[WINDOWS] DEVMODE configured: {copies} cop(y/ies), paper={paper_size} (code 9), color={color_mode}, sides={sides}")
             except Exception as e:
-                print(f"[WINDOWS] [INFO] DEVMODE copy config not available ({e}); will handle copies cleanly.")
+                print(f"[WINDOWS] [INFO] Extended DEVMODE configuration note: {e}. Proceeding with GDI defaults.")
 
             # 3. Create Windows GDI Device Context
-            print(f"[WINDOWS] Initializing GDI Device Context for '{printer_name}'...")
+            print(f"[WINDOWS] [3/5] Creating Windows GDI Device Context via win32ui.CreateDC()...")
             pdc = win32ui.CreateDC()
-            if devmode:
-                pdc.CreatePrinterDC(printer_name)
-            else:
-                pdc.CreatePrinterDC(printer_name)
+            pdc.CreatePrinterDC(printer_name)
 
-            # Get printable pixel area from Device Context
+            # Get printable pixel area and DPI from Device Context
             printable_width = pdc.GetDeviceCaps(win32con.HORZRES)
             printable_height = pdc.GetDeviceCaps(win32con.VERTRES)
             dpi_x = pdc.GetDeviceCaps(win32con.LOGPIXELSX)
             dpi_y = pdc.GetDeviceCaps(win32con.LOGPIXELSY)
-            print(f"[WINDOWS] Printable Area: {printable_width}x{printable_height} px @ {dpi_x}x{dpi_y} DPI")
+            print(f"[WINDOWS] Device Context initialized successfully:")
+            print(f"          Printable Area:   {printable_width} x {printable_height} pixels")
+            print(f"          Print Resolution: {dpi_x} DPI (H) x {dpi_y} DPI (V)")
 
-            # Determine copies multiplier: if driver accepted native dmCopies, loop once; else loop
+            # Determine copies multiplier: if driver accepted native dmCopies, spool 1 job; else loop
             job_repeat = 1 if native_copies_configured else copies
 
             job_title = f"SmartPrint_{file_path.stem}"
             ext = file_path.suffix.lower()
 
+            print(f"[WINDOWS] [4/5] Initiating Windows Print Spooler Doc: StartDoc('{job_title}')...")
+
             for copy_idx in range(1, job_repeat + 1):
                 if job_repeat > 1:
-                    print(f"[WINDOWS] Sending document copy {copy_idx}/{job_repeat} to Windows Spooler...")
+                    print(f"[WINDOWS] Processing copy {copy_idx}/{job_repeat}...")
 
                 pdc.StartDoc(job_title)
 
                 if ext == ".pdf":
-                    self._render_pdf_to_dc(pdc, file_path, printable_width, printable_height)
+                    self._render_pdf_to_dc(pdc, file_path, printable_width, printable_height, color_mode)
                 elif ext in [".jpg", ".jpeg", ".png", ".bmp"]:
-                    self._render_image_to_dc(pdc, file_path, printable_width, printable_height)
+                    self._render_image_to_dc(pdc, file_path, printable_width, printable_height, color_mode)
                 else:
                     pdc.AbortDoc()
                     raise PrinterError(f"Unsupported file format '{ext}'. Supported: PDF, JPG, PNG.")
 
+                print(f"[WINDOWS] Completing Spooler Doc: EndDoc('{job_title}')...")
                 pdc.EndDoc()
 
             # Clean up DC
+            print(f"[WINDOWS] [5/5] Releasing GDI Device Context resources: pdc.DeleteDC()...")
             pdc.DeleteDC()
 
             elapsed = round(time.time() - start_time, 2)
-            print(f"[WINDOWS] Windows Spooler/job result: Job queued successfully into spoolsv.exe")
-            print(f"[SUCCESS] Document delivered to {printer_name} in {elapsed}s.")
+            print(f"[WINDOWS] Spooler Result: Document dispatched to spoolsv.exe without errors.")
+            print(f"[SUCCESS] Print completed successfully in {elapsed}s.")
 
             return {
                 "success": True,
@@ -345,7 +376,7 @@ class WindowsPrinterEngine:
                 except Exception:
                     pass
 
-    def _render_pdf_to_dc(self, pdc, pdf_path: Path, max_w: int, max_h: int):
+    def _render_pdf_to_dc(self, pdc, pdf_path: Path, max_w: int, max_h: int, color_mode: str = "BW"):
         """
         Renders PDF pages directly into the Windows Printer Device Context using pypdfium2.
         pypdfium2 uses Google's PDFium engine to rasterize vector PDF pages into crisp
@@ -361,9 +392,10 @@ class WindowsPrinterEngine:
             )
 
         try:
+            print(f"[WINDOWS] Opening PDF via pypdfium2: {pdf_path.name}...")
             pdf = pdfium.PdfDocument(str(pdf_path))
             total_pages = len(pdf)
-            print(f"[WINDOWS] Rendering PDF ({total_pages} page(s)) via PDFium engine...")
+            print(f"[WINDOWS] PDF Page Count: {total_pages} page(s)")
 
             for page_num in range(total_pages):
                 page = pdf.get_page(page_num)
@@ -371,34 +403,37 @@ class WindowsPrinterEngine:
                 rendered = page.render(scale=300 / 72.0)
                 pil_image = rendered.to_pil()
 
-                # Start page in Windows GDI Spooler
-                pdc.StartPage()
+                # Convert to grayscale if B&W requested
+                if color_mode in ["BW", "MONOCHROME", "GRAYSCALE"]:
+                    pil_image = pil_image.convert("L").convert("RGB")
+                elif pil_image.mode != "RGB":
+                    pil_image = pil_image.convert("RGB")
 
                 # Scale to fit printable dimensions while preserving aspect ratio
                 img_w, img_h = pil_image.size
                 scale = min(max_w / img_w, max_h / img_h)
                 dest_w = int(img_w * scale)
                 dest_h = int(img_h * scale)
-                # Center on page
                 dest_x = (max_w - dest_w) // 2
                 dest_y = (max_h - dest_h) // 2
 
-                # Convert to RGB and paint into Windows GDI DC
-                if pil_image.mode != "RGB":
-                    pil_image = pil_image.convert("RGB")
+                print(f"[WINDOWS] GDI StartPage(): page {page_num + 1}/{total_pages}")
+                print(f"          Rendered size:   {img_w}x{img_h} px")
+                print(f"          Target on paper: {dest_w}x{dest_h} px at ({dest_x}, {dest_y})")
 
+                pdc.StartPage()
                 dib = ImageWin.Dib(pil_image)
                 dib.draw(pdc.GetHandleOutput(), (dest_x, dest_y, dest_x + dest_w, dest_y + dest_h))
-
                 pdc.EndPage()
-                print(f"[WINDOWS]    Page {page_num + 1}/{total_pages} rasterized and spooled.")
+
+                print(f"[WINDOWS] GDI EndPage(): page {page_num + 1}/{total_pages} spooled to driver buffer.")
 
             pdf.close()
 
         except Exception as e:
             raise PrinterError(f"Failed to render PDF to Windows Device Context: {e}")
 
-    def _render_image_to_dc(self, pdc, img_path: Path, max_w: int, max_h: int):
+    def _render_image_to_dc(self, pdc, img_path: Path, max_w: int, max_h: int, color_mode: str = "BW"):
         """
         Renders JPG, JPEG, or PNG images into the Windows Printer Device Context via Pillow.
         """
@@ -413,9 +448,10 @@ class WindowsPrinterEngine:
         try:
             with Image.open(str(img_path)) as img:
                 print(f"[WINDOWS] Rendering image ({img.format}, {img.size[0]}x{img.size[1]} px)...")
-                pdc.StartPage()
-
-                if img.mode != "RGB":
+                
+                if color_mode in ["BW", "MONOCHROME", "GRAYSCALE"]:
+                    img = img.convert("L").convert("RGB")
+                elif img.mode != "RGB":
                     img = img.convert("RGB")
 
                 img_w, img_h = img.size
@@ -425,11 +461,15 @@ class WindowsPrinterEngine:
                 dest_x = (max_w - dest_w) // 2
                 dest_y = (max_h - dest_h) // 2
 
+                print(f"[WINDOWS] GDI StartPage(): {img_path.name}")
+                print(f"          Target on paper: {dest_w}x{dest_h} px at ({dest_x}, {dest_y})")
+
+                pdc.StartPage()
                 dib = ImageWin.Dib(img)
                 dib.draw(pdc.GetHandleOutput(), (dest_x, dest_y, dest_x + dest_w, dest_y + dest_h))
-
                 pdc.EndPage()
-                print(f"[WINDOWS]    Image rasterized and spooled to printer DC.")
+
+                print(f"[WINDOWS] GDI EndPage(): image spooled to driver buffer.")
 
         except Exception as e:
             raise PrinterError(f"Failed to render image to Windows Device Context: {e}")
