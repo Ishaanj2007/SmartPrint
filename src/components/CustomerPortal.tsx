@@ -190,7 +190,7 @@ export function CustomerPortal() {
       });
 
       const effectiveSettings: PrintSettings = {
-        paperSize: 'A4',
+        paperSize: settings.paperSize,
         colorMode: settings.colorMode,
         sides: settings.sides,
         copies: settings.copies,
@@ -625,8 +625,28 @@ export function CustomerPortal() {
               <Printer className="w-4 h-4 text-zinc-900" /> Print Settings
             </h3>
 
-            {/* Color Mode, Sides & Copies (Paper Size is locked to A4) */}
-            <div className="grid grid-cols-2 gap-3">
+            {/* Paper Size, Color Mode & Sides */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-zinc-700 mb-1.5">Paper Size</label>
+                <div className="grid grid-cols-2 gap-1.5 bg-zinc-100 p-1 rounded-xl">
+                  {(['A4', 'A3'] as PaperSize[]).map((size) => (
+                    <button
+                      key={size}
+                      type="button"
+                      onClick={() => setSettings((s) => ({ ...s, paperSize: size }))}
+                      className={`py-1.5 text-xs font-semibold rounded-lg transition cursor-pointer ${
+                        settings.paperSize === size
+                          ? 'bg-white text-zinc-900 shadow-xs'
+                          : 'text-zinc-600 hover:text-zinc-900'
+                      }`}
+                    >
+                      {size}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div>
                 <label className="block text-xs font-semibold text-zinc-700 mb-1.5">Color</label>
                 <div className="grid grid-cols-2 gap-1.5 bg-zinc-100 p-1 rounded-xl">
@@ -677,7 +697,7 @@ export function CustomerPortal() {
             {/* Copies Counter */}
             <div>
               <label className="block text-xs font-semibold text-zinc-700 mb-1.5">
-                Copies (1 - 20) • <span className="font-normal text-zinc-500">Standard A4 paper</span>
+                Copies (1 - 20) • <span className="font-normal text-zinc-500">{settings.paperSize} paper</span>
               </label>
               <div className="flex items-center bg-zinc-100 p-1 rounded-xl max-w-xs">
                 <button

@@ -11,8 +11,11 @@ export class OrderController {
         customerPhone,
         customerNotes,
         defaultSettings,
-        files: jsonFiles,
+        files: jsonFilesInput,
+        jsonFiles: alternativeJsonFiles,
       } = req.body;
+
+      const jsonFiles = alternativeJsonFiles || jsonFilesInput;
 
       // Parse default print settings
       let parsedDefaultSettings: PrintSettings = {

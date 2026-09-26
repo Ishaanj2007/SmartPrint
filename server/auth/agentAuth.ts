@@ -7,7 +7,7 @@ export interface AuthenticatedAgentRequest extends Request {
 }
 
 export function requireAgentAuth(req: AuthenticatedAgentRequest, res: Response, next: NextFunction): void {
-  const agentId = (req.headers['x-agent-id'] as string) || (req.body && req.body.agent_id);
+  let agentId = (req.headers['x-agent-id'] as string) || (req.body && req.body.agent_id);
   const authHeader = req.headers['authorization'];
   const agentTokenHeader = req.headers['x-agent-token'] as string;
 
@@ -16,9 +16,24 @@ export function requireAgentAuth(req: AuthenticatedAgentRequest, res: Response, 
     (authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null) ||
     (req.body && req.body.agent_token);
 
-  if (!agentId || !token) {
+  if (!token) {
     res.status(401).json({
-      error: 'Unauthorized: Missing Agent ID or Agent Token.',
+      error: 'Unauthorized: Missing Agent Token.',
+    });
+    return;
+  }
+
+  // If agentId was not sent in header or body, attempt lookup by token
+  if (!agentId) {
+    const matchedAgent = db.getAllAgents().find((a) => a.token === token);
+    if (matchedAgent) {
+      agentId = matchedAgent.id;
+    }
+  }
+
+  if (!agentId) {
+    res.status(401).json({
+      error: 'Unauthorized: Missing Agent ID and token could not be mapped to an agent.',
     });
     return;
   }

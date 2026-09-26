@@ -41,10 +41,48 @@ export class AgentController {
   public static async getJobs(req: AuthenticatedAgentRequest, res: Response): Promise<void> {
     try {
       const approvedJobs = AgentService.getApprovedJobs();
+      // Format jobs to provide both snake_case and camelCase compatibility with python agent
+      const formattedJobs = approvedJobs.map((order) => ({
+        id: order.id,
+        public_order_id: order.publicOrderId,
+        publicOrderId: order.publicOrderId,
+        status: order.status,
+        customer_name: order.customerName,
+        customerName: order.customerName,
+        total_files: order.totalFiles,
+        totalFiles: order.totalFiles,
+        created_at: order.createdAt,
+        createdAt: order.createdAt,
+        files: order.files.map((file) => ({
+          id: file.id,
+          order_id: file.orderId,
+          orderId: file.orderId,
+          original_filename: file.originalFilename,
+          originalFilename: file.originalFilename,
+          mime_type: file.mimeType,
+          mimeType: file.mimeType,
+          file_size_bytes: file.fileSizeBytes,
+          fileSizeBytes: file.fileSizeBytes,
+          page_count: file.pageCount,
+          pageCount: file.pageCount,
+          print_settings: {
+            paper_size: file.printSettings.paperSize,
+            paperSize: file.printSettings.paperSize,
+            color_mode: file.printSettings.colorMode,
+            colorMode: file.printSettings.colorMode,
+            sides: file.printSettings.sides,
+            copies: file.printSettings.copies,
+            page_range: file.printSettings.pageRange,
+            pageRange: file.printSettings.pageRange,
+          },
+          printSettings: file.printSettings,
+        })),
+      }));
+
       res.json({
         success: true,
-        count: approvedJobs.length,
-        jobs: approvedJobs,
+        count: formattedJobs.length,
+        jobs: formattedJobs,
       });
     } catch (error: any) {
       res.status(500).json({ error: error.message });

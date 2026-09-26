@@ -288,12 +288,15 @@ Examples:
     parser.add_argument("--list-printers", action="store_true", help="List installed printers on this machine")
     parser.add_argument("--mock", action="store_true", help="Force mock print mode (no physical paper consumed)")
     parser.add_argument("--loop", action="store_true", help="Run continuous background polling loop")
+    parser.add_argument("--server", default=None, help="Override server URL (e.g. https://ais-dev-...app)")
     parser.add_argument("--config", default="config.json", help="Path to config.json file (default: config.json)")
 
     args = parser.parse_args()
 
     # Load configuration
     cfg = AgentConfig.load(args.config)
+    if args.server:
+        cfg.server_url = args.server.rstrip("/")
     if args.printer:
         cfg.printer_name = args.printer
     if args.mock:

@@ -1,10 +1,10 @@
 {
-  "server_url": "http://localhost:3000",
+  "server_url": "https://ais-dev-27dl5fsfimydc5itwuypjl-1066464352740.asia-southeast1.run.app",
   "agent_id": "SHOP_001",
   "agent_token": "agent_secret_token_123",
-  "printer_name": "DEFAULT",
+  "printer_name": "EPSON L8050 Series",
   "poll_interval": 3,
   "heartbeat_interval": 10,
-  "print_mode": "mock",
+  "print_mode": "windows",
   "temp_dir": "./spool"
 }

@@ -199,16 +199,17 @@ pip install requests pywin32 Pillow pypdfium2
 Edit `print-agent/config.json`:
 ```json
 {
-  "server_url": "https://your-print-shop-domain.com",
+  "server_url": "https://ais-dev-27dl5fsfimydc5itwuypjl-1066464352740.asia-southeast1.run.app",
   "agent_id": "SHOP_001",
   "agent_token": "agent_secret_token_123",
-  "printer_name": "DEFAULT",
+  "printer_name": "EPSON L8050 Series",
   "poll_interval": 3,
   "heartbeat_interval": 10,
   "print_mode": "windows",
   "temp_dir": "./spool"
 }
 ```
+*(If running against a local test server instead, you can set `"server_url": "http://localhost:3000"` or pass `--server http://localhost:3000`).*
 
 ---
 
