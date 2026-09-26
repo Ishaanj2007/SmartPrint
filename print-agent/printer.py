@@ -116,9 +116,22 @@ class WindowsPrinterEngine:
 
     def resolve_printer(self, target_name: Optional[str] = None) -> str:
         """
-        Resolves a printer name. If 'DEFAULT' or None, resolves to the Windows default.
-        Validates that the resolved printer actually exists on the system.
+        Resolves a printer name.
+        - In Mock Mode: accepts any explicitly supplied printer name without requiring
+          it to be in the fake printer list. If None or 'DEFAULT', uses the default mock printer.
+          Never throws PrinterNotFoundError in mock mode if a target is supplied.
+        - In Real Windows Mode: queries the Windows Print Spooler and validates that
+          the target printer is actually installed on the operating system.
         """
+        if self.mode == "mock":
+            if not target_name or target_name.upper() == "DEFAULT":
+                default_mock = "EPSON L8050 Series (Mock)"
+                print(f"[MOCK] No specific printer given. Using default mock printer: '{default_mock}'")
+                return default_mock
+            print(f"[MOCK] Using configured printer target: '{target_name}' (Mock simulation)")
+            return target_name
+
+        # Real Windows mode
         installed = self.list_printers()
         if not installed:
             raise PrinterNotFoundError("No printers were detected on this computer.")
@@ -134,8 +147,8 @@ class WindowsPrinterEngine:
                 return name
 
         raise PrinterNotFoundError(
-            f"Configured printer '{target_name}' was not found. "
-            f"Available printers: {', '.join(installed)}"
+            f"Configured printer '{target_name}' was not found in Windows. "
+            f"Available Windows printers: {', '.join(installed)}"
         )
 
     def print_file(
