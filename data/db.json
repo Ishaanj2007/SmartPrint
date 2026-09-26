@@ -196,7 +196,7 @@
     "ord-1790427449492-f5151331": {
       "id": "ord-1790427449492-f5151331",
       "publicOrderId": "PS-20260926-007",
-      "status": "CLAIMED",
+      "status": "COMPLETED",
       "customerName": "Live CloudRun User",
       "customerPhone": "+91 9876543210",
       "customerNotes": "Color copy test",
@@ -222,7 +222,7 @@
         }
       ],
       "createdAt": "2026-09-26T12:57:29.492Z",
-      "updatedAt": "2026-09-26T12:57:29.727Z",
+      "updatedAt": "2026-09-26T12:57:29.790Z",
       "claimedByAgent": "SHOP_001"
     }
   },
@@ -233,18 +233,18 @@
       "token": "agent_secret_token_123",
       "configuredPrinter": "EPSON L8050 Series",
       "isActive": true,
-      "lastHeartbeatAt": "2026-09-26T12:57:29.364Z",
+      "lastHeartbeatAt": "2026-09-26T13:57:51.571Z",
       "currentStatus": "IDLE",
       "printMode": "windows",
       "systemInfo": {
-        "os": "Windows 10 Pro",
+        "os": "Windows 10",
         "printer": "EPSON L3150 Series",
         "python": "3.13.15",
         "platform": "Windows-10-10.0.19045-SP0",
         "mode": "windows"
       },
       "createdAt": "2026-09-26T10:42:31.189Z",
-      "updatedAt": "2026-09-26T12:57:29.364Z"
+      "updatedAt": "2026-09-26T13:57:51.571Z"
     }
   },
   "auditLogs": [
@@ -495,6 +495,16 @@
       "actorId": "SHOP_001",
       "message": "Order atomically claimed by Print Agent SHOP_001",
       "createdAt": "2026-09-26T12:57:29.727Z"
+    },
+    {
+      "id": "audit-1790427449790-5m77r",
+      "orderId": "ord-1790427449492-f5151331",
+      "previousStatus": "CLAIMED",
+      "newStatus": "COMPLETED",
+      "actorType": "PRINT_AGENT",
+      "actorId": "SHOP_001",
+      "message": "Document successfully printed on Windows printer ({\"spooled\":true,\"printer\":\"EPSON L8050 Series\"})",
+      "createdAt": "2026-09-26T12:57:29.790Z"
     }
   ],
   "nextDailySequence": {

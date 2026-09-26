@@ -53,6 +53,30 @@ export function CustomerPortal() {
   const [isLoadingOrder, setIsLoadingOrder] = useState(false);
   const [orderQrDataUrl, setOrderQrDataUrl] = useState<string>('');
   const [copiedId, setCopiedId] = useState(false);
+  const [systemInfo, setSystemInfo] = useState<{ isOnline: boolean; printer: string } | null>(null);
+
+  // Poll system info for live counter PC connectivity
+  useEffect(() => {
+    const fetchInfo = async () => {
+      try {
+        const res = await fetch('/api/system/info');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.defaultAgent) {
+            setSystemInfo({
+              isOnline: Boolean(data.defaultAgent.isOnline),
+              printer: data.defaultAgent.printer || 'EPSON L8050 Series',
+            });
+          }
+        }
+      } catch (e) {
+        // silent fallback
+      }
+    };
+    fetchInfo();
+    const interval = setInterval(fetchInfo, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Check URL hash or query for initial public order ID
   useEffect(() => {
@@ -491,6 +515,23 @@ export function CustomerPortal() {
         <p className="text-sm text-zinc-500 mt-1">
           Upload PDF or photos, choose paper & copies, pay at counter, and print instantly.
         </p>
+
+        {/* Live Counter Printer Telemetry Indicator */}
+        {systemInfo && (
+          <div className="inline-flex items-center gap-2 mt-3 px-3 py-1 rounded-full border text-xs font-semibold">
+            {systemInfo.isOnline ? (
+              <span className="flex items-center gap-1.5 text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span>Shop Printer Online: {systemInfo.printer}</span>
+              </span>
+            ) : (
+              <span className="flex items-center gap-1.5 text-zinc-600 bg-zinc-100 px-2.5 py-0.5 rounded-full border border-zinc-200">
+                <span className="w-2 h-2 rounded-full bg-zinc-400" />
+                <span>Counter Printer: Ready for Queue</span>
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Track Existing Order Bar */}

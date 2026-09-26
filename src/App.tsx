@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { CustomerPortal } from './components/CustomerPortal';
 import { AdminDashboard } from './components/AdminDashboard';
 import { ShopQrModal } from './components/ShopQrModal';
-import { Printer, QrCode, Lock, ArrowLeft } from 'lucide-react';
+import { Printer, QrCode, Lock, ArrowLeft, Wifi, WifiOff } from 'lucide-react';
 
 export default function App() {
   const [isAdminView, setIsAdminView] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
+  const [agentStatus, setAgentStatus] = useState<{ isOnline: boolean; printer: string; name: string } | null>(null);
 
   // Check URL pathname or query for /admin or ?view=admin
   useEffect(() => {
@@ -14,6 +15,31 @@ export default function App() {
     if (window.location.pathname.startsWith('/admin') || params.get('admin') === 'true') {
       setIsAdminView(true);
     }
+  }, []);
+
+  // Poll system info for live counter PC connectivity
+  useEffect(() => {
+    const checkSystem = async () => {
+      try {
+        const res = await fetch('/api/system/info');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.defaultAgent) {
+            setAgentStatus({
+              isOnline: Boolean(data.defaultAgent.isOnline),
+              printer: data.defaultAgent.printer || 'EPSON L8050 Series',
+              name: data.defaultAgent.name || 'Counter PC',
+            });
+          }
+        }
+      } catch (e) {
+        console.warn('Could not fetch system info:', e);
+      }
+    };
+
+    checkSystem();
+    const interval = setInterval(checkSystem, 3000);
+    return () => clearInterval(interval);
   }, []);
 
   return (
@@ -39,8 +65,34 @@ export default function App() {
             </div>
           </div>
 
-          {/* Action buttons */}
-          <div className="flex items-center gap-2">
+          {/* Action buttons & Live PC status badge */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Live PC Status indicator */}
+            {agentStatus && (
+              <div
+                className={`hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold ${
+                  agentStatus.isOnline
+                    ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                    : 'bg-zinc-100 border-zinc-200 text-zinc-600'
+                }`}
+                title={agentStatus.isOnline ? `Connected to ${agentStatus.printer}` : 'Windows Print Agent Offline'}
+              >
+                {agentStatus.isOnline ? (
+                  <>
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <Wifi className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>PC Online ({agentStatus.printer})</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="w-2 h-2 rounded-full bg-zinc-400" />
+                    <WifiOff className="w-3.5 h-3.5 text-zinc-500" />
+                    <span>PC Offline</span>
+                  </>
+                )}
+              </div>
+            )}
+
             {isAdminView ? (
               <button
                 onClick={() => setIsAdminView(false)}

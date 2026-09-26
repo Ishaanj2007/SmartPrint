@@ -43,13 +43,22 @@ app.get('/api/system/info', (req: Request, res: Response) => {
   const defaultAgent = db.getAgent('SHOP_001');
   const appUrl = process.env.APP_URL || `http://localhost:${PORT}`;
 
+  const lastSeen = defaultAgent?.lastHeartbeatAt ? new Date(defaultAgent.lastHeartbeatAt).getTime() : 0;
+  const secondsSinceHeartbeat = Math.round((Date.now() - lastSeen) / 1000);
+  const isOnline = defaultAgent ? secondsSinceHeartbeat <= 30 : false;
+
   res.json({
     shopName: 'QuickPrint Xerox & Digital Press',
     appUrl,
     customerQrUrl: appUrl,
     defaultAgent: {
       id: defaultAgent?.id || 'SHOP_001',
-      printer: defaultAgent?.configuredPrinter || 'DEFAULT',
+      name: defaultAgent?.name || 'Counter Main Windows PC',
+      printer: defaultAgent?.configuredPrinter || 'EPSON L8050 Series',
+      isOnline,
+      secondsSinceHeartbeat,
+      lastHeartbeatAt: defaultAgent?.lastHeartbeatAt || null,
+      currentStatus: isOnline ? (defaultAgent?.currentStatus || 'IDLE') : 'OFFLINE',
     },
     supportedFormats: ['PDF', 'JPG', 'JPEG', 'PNG'],
     maxFileSizeMb: 20,
