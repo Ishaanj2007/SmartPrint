@@ -171,13 +171,15 @@ class AgentAPIClient:
         try:
             res = requests.post(url, json=payload, headers=self._headers, timeout=10)
             if res.status_code == 200:
-                return self._parse_json_or_raise(res, context="Heartbeat")
+                data = self._parse_json_or_raise(res, context="Heartbeat")
+                return {"success": True, **data}
             else:
-                print(f"[WARN] Heartbeat returned status {res.status_code}")
-                return {"success": False, "status_code": res.status_code}
+                return {
+                    "success": False,
+                    "status_code": res.status_code,
+                    "error": f"HTTP {res.status_code} - {res.reason or 'Request rejected'}",
+                }
         except Exception as e:
-            # Heartbeats log warning without terminating agent loop
-            print(f"[WARN] Heartbeat failed: {e}")
             return {"success": False, "error": str(e)}
 
     def get_approved_jobs(self) -> List[Dict[str, Any]]:

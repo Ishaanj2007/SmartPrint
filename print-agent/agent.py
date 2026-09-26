@@ -22,6 +22,7 @@ import argparse
 import os
 import platform
 import sys
+import threading
 import time
 from datetime import datetime
 from pathlib import Path
@@ -47,6 +48,71 @@ except ImportError:
 
 def get_timestamp() -> str:
     return datetime.now().strftime("[%H:%M:%S]")
+
+
+class HeartbeatWorker(threading.Thread):
+    """
+    Dedicated background worker for periodic heartbeats.
+    Ensures the shop PC remains marked 'Online' in the Admin Dashboard even
+    during long print jobs, large file downloads, or network delays.
+    """
+
+    def __init__(self, api_client: AgentAPIClient, interval: float, printer_name: str, print_mode: str):
+        super().__init__(daemon=True, name="HeartbeatThread")
+        self.api = api_client
+        self.interval = max(float(interval), 3.0)
+        self.printer_name = printer_name
+        self.print_mode = print_mode
+        self._stop_event = threading.Event()
+        self._current_status = "IDLE"
+        self._lock = threading.Lock()
+
+    def set_status(self, status: str):
+        with self._lock:
+            self._current_status = status
+
+    def get_status(self) -> str:
+        with self._lock:
+            return self._current_status
+
+    def stop(self):
+        self._stop_event.set()
+
+    def send_now(self, is_initial: bool = False) -> bool:
+        status = self.get_status()
+        sys_info = {
+            "platform": platform.platform(),
+            "python": platform.python_version(),
+            "mode": self.print_mode,
+            "os": f"{platform.system()} {platform.release()}",
+        }
+
+        if is_initial:
+            print(f"{get_timestamp()} Sending heartbeat...")
+
+        res = self.api.send_heartbeat(
+            status=status,
+            system_info=sys_info
+        )
+
+        if res.get("success"):
+            if is_initial:
+                print(f"{get_timestamp()} [SUCCESS] Heartbeat acknowledged")
+            else:
+                print(f"{get_timestamp()} [HEARTBEAT] Online")
+            return True
+        else:
+            err = res.get("error", "Unknown error")
+            status_code = res.get("status_code")
+            code_prefix = f"HTTP {status_code} - " if status_code else ""
+            print(f"{get_timestamp()} [HEARTBEAT ERROR] {code_prefix}{err}")
+            return False
+
+    def run(self):
+        while not self._stop_event.is_set():
+            if self._stop_event.wait(self.interval):
+                break
+            self.send_now(is_initial=False)
 
 
 def run_milestone1_standalone_test(file_path: str, printer_name: str, force_mock: bool):
@@ -162,26 +228,22 @@ def run_daemon_loop(config: AgentConfig):
         print("Please verify 'agent_id' and 'agent_token' in config.json or environment variables.")
         sys.exit(1)
 
-    last_heartbeat = 0.0
+    # 2. Start Dedicated Background Heartbeat Worker
+    heartbeat_worker = HeartbeatWorker(
+        api_client=api,
+        interval=config.heartbeat_interval,
+        printer_name=config.printer_name,
+        print_mode=config.print_mode,
+    )
+
+    # Send initial synchronous heartbeat handshake
+    heartbeat_worker.send_now(is_initial=True)
+    heartbeat_worker.start()
 
     print(f"{get_timestamp()} Ready and listening for approved print jobs. Press Ctrl+C to stop.")
 
     try:
         while True:
-            now = time.time()
-
-            # Heartbeat check
-            if now - last_heartbeat >= config.heartbeat_interval:
-                api.send_heartbeat(
-                    status="IDLE",
-                    system_info={
-                        "platform": platform.platform(),
-                        "python": platform.python_version(),
-                        "mode": config.print_mode,
-                    }
-                )
-                last_heartbeat = now
-
             # Poll for approved jobs
             jobs = api.get_approved_jobs()
 
@@ -203,7 +265,7 @@ def run_daemon_loop(config: AgentConfig):
                         continue
 
                     print(f"{get_timestamp()} Job #{public_order_id} claimed successfully.")
-                    api.send_heartbeat(status="PRINTING")
+                    heartbeat_worker.set_status("PRINTING")
 
                     order_success = True
                     failure_reason = ""
@@ -259,13 +321,14 @@ def run_daemon_loop(config: AgentConfig):
                         api.mark_failed(job_id, failure_reason)
                         print(f"{get_timestamp()} [FAILED] Order #{public_order_id} marked FAILED ({failure_reason}).")
 
-                    api.send_heartbeat(status="IDLE")
+                    heartbeat_worker.set_status("IDLE")
                     print("-" * 65)
 
             time.sleep(config.poll_interval)
 
     except KeyboardInterrupt:
         print(f"\n{get_timestamp()} Agent shut down requested by operator (Ctrl+C). Exiting.")
+        heartbeat_worker.stop()
         sys.exit(0)
 
 

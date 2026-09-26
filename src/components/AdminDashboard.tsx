@@ -258,8 +258,8 @@ export function AdminDashboard() {
   }
 
   // Active Windows Print Agent banner
-  const primaryAgent = agents[0];
-  const isAgentOnline = primaryAgent?.isOnline;
+  const primaryAgent = agents.find((a) => a.id === 'SHOP_001') || agents[0];
+  const isAgentOnline = Boolean(primaryAgent?.isOnline);
 
   const tabOptions = [
     { id: 'PENDING', label: 'Pending', count: counts['PENDING'] || 0, color: 'text-amber-700' },
