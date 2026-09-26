@@ -1,0 +1,503 @@
+{
+  "orders": {
+    "sample-ord-001": {
+      "id": "sample-ord-001",
+      "publicOrderId": "PS-20260926-001",
+      "status": "REJECTED",
+      "customerName": "Alex Customer",
+      "customerPhone": "+1-555-0199",
+      "customerNotes": "Please print color on A4 single-sided. 2 copies.",
+      "totalFiles": 1,
+      "files": [
+        {
+          "id": "file-sample-001",
+          "orderId": "sample-ord-001",
+          "originalFilename": "project_presentation.pdf",
+          "storageFilename": "sample_project_presentation.pdf",
+          "storagePath": "sample_project_presentation.pdf",
+          "mimeType": "application/pdf",
+          "fileSizeBytes": 245600,
+          "pageCount": 6,
+          "printSettings": {
+            "paperSize": "A4",
+            "colorMode": "COLOR",
+            "sides": "SINGLE",
+            "copies": 2,
+            "pageRange": "ALL"
+          },
+          "createdAt": "2026-09-26T09:42:31.189Z"
+        }
+      ],
+      "createdAt": "2026-09-26T09:42:31.189Z",
+      "updatedAt": "2026-09-26T12:56:51.786Z",
+      "rejectionReason": "Poor document quality / unreadable"
+    },
+    "ord-1790422693442-eddc0008": {
+      "id": "ord-1790422693442-eddc0008",
+      "publicOrderId": "PS-20260926-002",
+      "status": "FAILED",
+      "customerName": "Test Customer",
+      "customerPhone": "",
+      "customerNotes": "",
+      "totalFiles": 1,
+      "files": [
+        {
+          "id": "file-1790422693443-0-b51d47",
+          "orderId": "ord-1790422693442-eddc0008",
+          "originalFilename": "test.pdf",
+          "storageFilename": "1790422693442_937d3bc55bdadba24919b39303d8fc97.pdf",
+          "storagePath": "/app/applet/uploads/1790422693442_937d3bc55bdadba24919b39303d8fc97.pdf",
+          "mimeType": "application/pdf",
+          "fileSizeBytes": 15,
+          "pageCount": 1,
+          "printSettings": {
+            "paperSize": "A4",
+            "colorMode": "BW",
+            "sides": "SINGLE",
+            "copies": 1,
+            "pageRange": "ALL"
+          },
+          "createdAt": "2026-09-26T11:38:13.443Z"
+        }
+      ],
+      "createdAt": "2026-09-26T11:38:13.443Z",
+      "updatedAt": "2026-09-26T12:42:39.614Z",
+      "failureReason": "Windows Print Spooler error: Failed to render PDF to Windows Device Context: Failed to load document (PDFium: Data format error).",
+      "claimedByAgent": "SHOP_001"
+    },
+    "ord-1790422702126-d80a0c1c": {
+      "id": "ord-1790422702126-d80a0c1c",
+      "publicOrderId": "PS-20260926-003",
+      "status": "REJECTED",
+      "customerName": "Test Customer",
+      "customerPhone": "",
+      "customerNotes": "",
+      "totalFiles": 1,
+      "files": [
+        {
+          "id": "file-1790422702126-0-bbb82d",
+          "orderId": "ord-1790422702126-d80a0c1c",
+          "originalFilename": "test_sample.pdf",
+          "storageFilename": "1790422702126_325142a04e4689bf6f2a5c06751a3920.pdf",
+          "storagePath": "/app/applet/uploads/1790422702126_325142a04e4689bf6f2a5c06751a3920.pdf",
+          "mimeType": "application/pdf",
+          "fileSizeBytes": 28,
+          "pageCount": 1,
+          "printSettings": {
+            "paperSize": "A4",
+            "colorMode": "BW",
+            "sides": "SINGLE",
+            "copies": 1,
+            "pageRange": "ALL"
+          },
+          "createdAt": "2026-09-26T11:38:22.126Z"
+        }
+      ],
+      "createdAt": "2026-09-26T11:38:22.126Z",
+      "updatedAt": "2026-09-26T12:56:49.921Z",
+      "rejectionReason": "Poor document quality / unreadable"
+    },
+    "ord-1790422727616-0baea253": {
+      "id": "ord-1790422727616-0baea253",
+      "publicOrderId": "PS-20260926-004",
+      "status": "COMPLETED",
+      "customerName": "Test Customer",
+      "customerPhone": "",
+      "customerNotes": "",
+      "totalFiles": 1,
+      "files": [
+        {
+          "id": "file-1790422727617-0-3028bb",
+          "orderId": "ord-1790422727616-0baea253",
+          "originalFilename": "test_sample.pdf",
+          "storageFilename": "1790422727616_0a305bcb0aadae6142e39bb618c3658f.pdf",
+          "storagePath": "/app/applet/uploads/1790422727616_0a305bcb0aadae6142e39bb618c3658f.pdf",
+          "mimeType": "application/pdf",
+          "fileSizeBytes": 28,
+          "pageCount": 1,
+          "printSettings": {
+            "paperSize": "A4",
+            "colorMode": "BW",
+            "sides": "SINGLE",
+            "copies": 1,
+            "pageRange": "ALL"
+          },
+          "createdAt": "2026-09-26T11:38:47.617Z"
+        }
+      ],
+      "createdAt": "2026-09-26T11:38:47.617Z",
+      "updatedAt": "2026-09-26T11:38:47.641Z",
+      "claimedByAgent": "SHOP_001"
+    },
+    "ord-1790422754627-2f51e405": {
+      "id": "ord-1790422754627-2f51e405",
+      "publicOrderId": "PS-20260926-005",
+      "status": "COMPLETED",
+      "customerName": "Test Customer",
+      "customerPhone": "",
+      "customerNotes": "",
+      "totalFiles": 1,
+      "files": [
+        {
+          "id": "file-1790422754627-0-c2eb65",
+          "orderId": "ord-1790422754627-2f51e405",
+          "originalFilename": "test_sample.pdf",
+          "storageFilename": "1790422754627_eb037dfcf357ea996027a94bff1fee79.pdf",
+          "storagePath": "/app/applet/uploads/1790422754627_eb037dfcf357ea996027a94bff1fee79.pdf",
+          "mimeType": "application/pdf",
+          "fileSizeBytes": 28,
+          "pageCount": 1,
+          "printSettings": {
+            "paperSize": "A4",
+            "colorMode": "BW",
+            "sides": "SINGLE",
+            "copies": 1,
+            "pageRange": "ALL"
+          },
+          "createdAt": "2026-09-26T11:39:14.627Z"
+        }
+      ],
+      "createdAt": "2026-09-26T11:39:14.627Z",
+      "updatedAt": "2026-09-26T11:39:14.659Z",
+      "claimedByAgent": "SHOP_001"
+    },
+    "ord-1790426389589-873ce8a4": {
+      "id": "ord-1790426389589-873ce8a4",
+      "publicOrderId": "PS-20260926-006",
+      "status": "COMPLETED",
+      "customerName": "Walk-in Customer",
+      "customerPhone": "",
+      "customerNotes": "",
+      "totalFiles": 1,
+      "files": [
+        {
+          "id": "file-1790426389590-0-cf7dfb",
+          "orderId": "ord-1790426389589-873ce8a4",
+          "originalFilename": "WhatsApp Image 2026-09-26 at 1.30.03 PM.jpeg",
+          "storageFilename": "1790426389589_f7b4a831dde104833a9a3241723f082b.jpeg",
+          "storagePath": "/app/applet/uploads/1790426389589_f7b4a831dde104833a9a3241723f082b.jpeg",
+          "mimeType": "image/jpeg",
+          "fileSizeBytes": 30941,
+          "pageCount": 1,
+          "printSettings": {
+            "paperSize": "A4",
+            "colorMode": "BW",
+            "sides": "SINGLE",
+            "copies": 1,
+            "pageRange": "ALL"
+          },
+          "createdAt": "2026-09-26T12:39:49.590Z"
+        }
+      ],
+      "createdAt": "2026-09-26T12:39:49.590Z",
+      "updatedAt": "2026-09-26T12:47:54.415Z",
+      "claimedByAgent": "SHOP_001"
+    },
+    "ord-1790427449492-f5151331": {
+      "id": "ord-1790427449492-f5151331",
+      "publicOrderId": "PS-20260926-007",
+      "status": "CLAIMED",
+      "customerName": "Live CloudRun User",
+      "customerPhone": "+91 9876543210",
+      "customerNotes": "Color copy test",
+      "totalFiles": 1,
+      "files": [
+        {
+          "id": "file-1790427449492-0-9fcfba",
+          "orderId": "ord-1790427449492-f5151331",
+          "originalFilename": "test_doc.pdf",
+          "storageFilename": "1790427449492_86f9f09a90967101dfe0527007ee9bf9.pdf",
+          "storagePath": "/app/applet/uploads/1790427449492_86f9f09a90967101dfe0527007ee9bf9.pdf",
+          "mimeType": "application/pdf",
+          "fileSizeBytes": 459,
+          "pageCount": 1,
+          "printSettings": {
+            "paperSize": "A4",
+            "colorMode": "COLOR",
+            "sides": "SINGLE",
+            "copies": 1,
+            "pageRange": "ALL"
+          },
+          "createdAt": "2026-09-26T12:57:29.492Z"
+        }
+      ],
+      "createdAt": "2026-09-26T12:57:29.492Z",
+      "updatedAt": "2026-09-26T12:57:29.727Z",
+      "claimedByAgent": "SHOP_001"
+    }
+  },
+  "agents": {
+    "SHOP_001": {
+      "id": "SHOP_001",
+      "name": "Counter Main Windows PC",
+      "token": "agent_secret_token_123",
+      "configuredPrinter": "EPSON L8050 Series",
+      "isActive": true,
+      "lastHeartbeatAt": "2026-09-26T12:57:29.364Z",
+      "currentStatus": "IDLE",
+      "printMode": "windows",
+      "systemInfo": {
+        "os": "Windows 10 Pro",
+        "printer": "EPSON L3150 Series",
+        "python": "3.13.15",
+        "platform": "Windows-10-10.0.19045-SP0",
+        "mode": "windows"
+      },
+      "createdAt": "2026-09-26T10:42:31.189Z",
+      "updatedAt": "2026-09-26T12:57:29.364Z"
+    }
+  },
+  "auditLogs": [
+    {
+      "id": "audit-1790422693443-fxc6f",
+      "orderId": "ord-1790422693442-eddc0008",
+      "newStatus": "PENDING",
+      "actorType": "CUSTOMER",
+      "message": "Order submitted by customer with 1 file(s)",
+      "createdAt": "2026-09-26T11:38:13.443Z"
+    },
+    {
+      "id": "audit-1790422702126-zefoq",
+      "orderId": "ord-1790422702126-d80a0c1c",
+      "newStatus": "PENDING",
+      "actorType": "CUSTOMER",
+      "message": "Order submitted by customer with 1 file(s)",
+      "createdAt": "2026-09-26T11:38:22.126Z"
+    },
+    {
+      "id": "audit-1790422727617-ckf09",
+      "orderId": "ord-1790422727616-0baea253",
+      "newStatus": "PENDING",
+      "actorType": "CUSTOMER",
+      "message": "Order submitted by customer with 1 file(s)",
+      "createdAt": "2026-09-26T11:38:47.617Z"
+    },
+    {
+      "id": "audit-1790422727626-xjmzw",
+      "orderId": "ord-1790422727616-0baea253",
+      "previousStatus": "PENDING",
+      "newStatus": "APPROVED",
+      "actorType": "ADMIN",
+      "actorId": "admin",
+      "message": "Order approved by shopkeeper. Made available to Print Agent.",
+      "createdAt": "2026-09-26T11:38:47.626Z"
+    },
+    {
+      "id": "audit-1790422727630-knndn",
+      "orderId": "ord-1790422727616-0baea253",
+      "previousStatus": "APPROVED",
+      "newStatus": "CLAIMED",
+      "actorType": "PRINT_AGENT",
+      "actorId": "SHOP_001",
+      "message": "Order atomically claimed by Print Agent SHOP_001",
+      "createdAt": "2026-09-26T11:38:47.630Z"
+    },
+    {
+      "id": "audit-1790422727636-qxryw",
+      "orderId": "ord-1790422727616-0baea253",
+      "previousStatus": "CLAIMED",
+      "newStatus": "PRINTING",
+      "actorType": "PRINT_AGENT",
+      "actorId": "SHOP_001",
+      "message": "Print Agent sent document to Windows Spooler / printer driver",
+      "createdAt": "2026-09-26T11:38:47.636Z"
+    },
+    {
+      "id": "audit-1790422727641-tols0",
+      "orderId": "ord-1790422727616-0baea253",
+      "previousStatus": "PRINTING",
+      "newStatus": "COMPLETED",
+      "actorType": "PRINT_AGENT",
+      "actorId": "SHOP_001",
+      "message": "Document successfully printed on Windows printer ({\"printed_on\":\"EPSON L8050 Series\"})",
+      "createdAt": "2026-09-26T11:38:47.641Z"
+    },
+    {
+      "id": "audit-1790422754627-8mqre",
+      "orderId": "ord-1790422754627-2f51e405",
+      "newStatus": "PENDING",
+      "actorType": "CUSTOMER",
+      "message": "Order submitted by customer with 1 file(s)",
+      "createdAt": "2026-09-26T11:39:14.627Z"
+    },
+    {
+      "id": "audit-1790422754638-e7sep",
+      "orderId": "ord-1790422754627-2f51e405",
+      "previousStatus": "PENDING",
+      "newStatus": "APPROVED",
+      "actorType": "ADMIN",
+      "actorId": "admin",
+      "message": "Order approved by shopkeeper. Made available to Print Agent.",
+      "createdAt": "2026-09-26T11:39:14.638Z"
+    },
+    {
+      "id": "audit-1790422754643-vfd4g",
+      "orderId": "ord-1790422754627-2f51e405",
+      "previousStatus": "APPROVED",
+      "newStatus": "CLAIMED",
+      "actorType": "PRINT_AGENT",
+      "actorId": "SHOP_001",
+      "message": "Order atomically claimed by Print Agent SHOP_001",
+      "createdAt": "2026-09-26T11:39:14.643Z"
+    },
+    {
+      "id": "audit-1790422754653-map9y",
+      "orderId": "ord-1790422754627-2f51e405",
+      "previousStatus": "CLAIMED",
+      "newStatus": "PRINTING",
+      "actorType": "PRINT_AGENT",
+      "actorId": "SHOP_001",
+      "message": "Print Agent sent document to Windows Spooler / printer driver",
+      "createdAt": "2026-09-26T11:39:14.653Z"
+    },
+    {
+      "id": "audit-1790422754659-sq61d",
+      "orderId": "ord-1790422754627-2f51e405",
+      "previousStatus": "PRINTING",
+      "newStatus": "COMPLETED",
+      "actorType": "PRINT_AGENT",
+      "actorId": "SHOP_001",
+      "message": "Document successfully printed on Windows printer ({\"printed_on\":\"EPSON L8050 Series\"})",
+      "createdAt": "2026-09-26T11:39:14.659Z"
+    },
+    {
+      "id": "audit-1790426389590-liuof",
+      "orderId": "ord-1790426389589-873ce8a4",
+      "newStatus": "PENDING",
+      "actorType": "CUSTOMER",
+      "message": "Order submitted by customer with 1 file(s)",
+      "createdAt": "2026-09-26T12:39:49.590Z"
+    },
+    {
+      "id": "audit-1790426556712-ieo0z",
+      "orderId": "ord-1790422693442-eddc0008",
+      "previousStatus": "PENDING",
+      "newStatus": "APPROVED",
+      "actorType": "ADMIN",
+      "actorId": "admin",
+      "message": "Order approved by shopkeeper. Made available to Print Agent.",
+      "createdAt": "2026-09-26T12:42:36.712Z"
+    },
+    {
+      "id": "audit-1790426558125-lg6qt",
+      "orderId": "ord-1790422693442-eddc0008",
+      "previousStatus": "APPROVED",
+      "newStatus": "CLAIMED",
+      "actorType": "PRINT_AGENT",
+      "actorId": "SHOP_001",
+      "message": "Order atomically claimed by Print Agent SHOP_001",
+      "createdAt": "2026-09-26T12:42:38.125Z"
+    },
+    {
+      "id": "audit-1790426559111-viyge",
+      "orderId": "ord-1790422693442-eddc0008",
+      "previousStatus": "CLAIMED",
+      "newStatus": "PRINTING",
+      "actorType": "PRINT_AGENT",
+      "actorId": "SHOP_001",
+      "message": "Print Agent sent document to Windows Spooler / printer driver",
+      "createdAt": "2026-09-26T12:42:39.111Z"
+    },
+    {
+      "id": "audit-1790426559614-832ji",
+      "orderId": "ord-1790422693442-eddc0008",
+      "previousStatus": "PRINTING",
+      "newStatus": "FAILED",
+      "actorType": "PRINT_AGENT",
+      "actorId": "SHOP_001",
+      "message": "Print failed: Windows Print Spooler error: Failed to render PDF to Windows Device Context: Failed to load document (PDFium: Data format error).",
+      "createdAt": "2026-09-26T12:42:39.614Z"
+    },
+    {
+      "id": "audit-1790426870783-hxxw2",
+      "orderId": "ord-1790426389589-873ce8a4",
+      "previousStatus": "PENDING",
+      "newStatus": "APPROVED",
+      "actorType": "ADMIN",
+      "actorId": "admin",
+      "message": "Order approved by shopkeeper. Made available to Print Agent.",
+      "createdAt": "2026-09-26T12:47:50.783Z"
+    },
+    {
+      "id": "audit-1790426872811-l0q2s",
+      "orderId": "ord-1790426389589-873ce8a4",
+      "previousStatus": "APPROVED",
+      "newStatus": "CLAIMED",
+      "actorType": "PRINT_AGENT",
+      "actorId": "SHOP_001",
+      "message": "Order atomically claimed by Print Agent SHOP_001",
+      "createdAt": "2026-09-26T12:47:52.811Z"
+    },
+    {
+      "id": "audit-1790426873897-tgsj8",
+      "orderId": "ord-1790426389589-873ce8a4",
+      "previousStatus": "CLAIMED",
+      "newStatus": "PRINTING",
+      "actorType": "PRINT_AGENT",
+      "actorId": "SHOP_001",
+      "message": "Print Agent sent document to Windows Spooler / printer driver",
+      "createdAt": "2026-09-26T12:47:53.897Z"
+    },
+    {
+      "id": "audit-1790426874415-kjoss",
+      "orderId": "ord-1790426389589-873ce8a4",
+      "previousStatus": "PRINTING",
+      "newStatus": "COMPLETED",
+      "actorType": "PRINT_AGENT",
+      "actorId": "SHOP_001",
+      "message": "Document successfully printed on Windows printer ({\"completed_at\":\"2026-09-26T18:17:53.073510\"})",
+      "createdAt": "2026-09-26T12:47:54.415Z"
+    },
+    {
+      "id": "audit-1790427409921-029gg",
+      "orderId": "ord-1790422702126-d80a0c1c",
+      "previousStatus": "PENDING",
+      "newStatus": "REJECTED",
+      "actorType": "ADMIN",
+      "actorId": "admin",
+      "message": "Order rejected: Poor document quality / unreadable",
+      "createdAt": "2026-09-26T12:56:49.921Z"
+    },
+    {
+      "id": "audit-1790427411786-7oum2",
+      "orderId": "sample-ord-001",
+      "previousStatus": "PENDING",
+      "newStatus": "REJECTED",
+      "actorType": "ADMIN",
+      "actorId": "admin",
+      "message": "Order rejected: Poor document quality / unreadable",
+      "createdAt": "2026-09-26T12:56:51.786Z"
+    },
+    {
+      "id": "audit-1790427449492-12r1c",
+      "orderId": "ord-1790427449492-f5151331",
+      "newStatus": "PENDING",
+      "actorType": "CUSTOMER",
+      "message": "Order submitted by customer with 1 file(s)",
+      "createdAt": "2026-09-26T12:57:29.492Z"
+    },
+    {
+      "id": "audit-1790427449556-hvyhz",
+      "orderId": "ord-1790427449492-f5151331",
+      "previousStatus": "PENDING",
+      "newStatus": "APPROVED",
+      "actorType": "ADMIN",
+      "actorId": "admin",
+      "message": "Order approved by shopkeeper. Made available to Print Agent.",
+      "createdAt": "2026-09-26T12:57:29.556Z"
+    },
+    {
+      "id": "audit-1790427449727-ak6tk",
+      "orderId": "ord-1790427449492-f5151331",
+      "previousStatus": "APPROVED",
+      "newStatus": "CLAIMED",
+      "actorType": "PRINT_AGENT",
+      "actorId": "SHOP_001",
+      "message": "Order atomically claimed by Print Agent SHOP_001",
+      "createdAt": "2026-09-26T12:57:29.727Z"
+    }
+  ],
+  "nextDailySequence": {
+    "20260926": 8
+  }
+}

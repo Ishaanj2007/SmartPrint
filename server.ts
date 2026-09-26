@@ -8,7 +8,7 @@ import { CleanupService } from './server/services/cleanupService.js';
 import { db } from './server/database/db.js';
 
 const app = express();
-const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+const PORT = process.env.DEFAULT_APP_PORT ? parseInt(process.env.DEFAULT_APP_PORT, 10) : (process.env.PORT ? parseInt(process.env.PORT, 10) : 3000);
 const isProduction = process.env.NODE_ENV === 'production';
 
 // Body parsing with generous limit for large document uploads / base64 payloads
@@ -79,6 +79,10 @@ async function setupViteOrStatic() {
     const distPath = path.resolve(process.cwd(), 'dist');
     app.use(express.static(distPath));
     app.get('*', (req, res) => {
+      if (req.path.startsWith('/api')) {
+        res.status(404).json({ error: `API route not found: ${req.method} ${req.path}` });
+        return;
+      }
       const indexFile = path.join(distPath, 'index.html');
       if (fs.existsSync(indexFile)) {
         res.sendFile(indexFile);

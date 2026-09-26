@@ -48,10 +48,11 @@ class OrderController {
       }
       if (jsonFiles && Array.isArray(jsonFiles) && jsonFiles.length > 0) {
         for (const jf of jsonFiles) {
-          if (!jf.base64Data || !jf.filename || !jf.mimeType) {
+          const rawBase64 = jf.base64Data || jf.fileBase64 || jf.data || jf.content;
+          if (!rawBase64 || !jf.filename || !jf.mimeType) {
             continue;
           }
-          const buffer = Buffer.from(jf.base64Data.replace(/^data:.*,/, ""), "base64");
+          const buffer = Buffer.from(rawBase64.replace(/^data:.*,/, ""), "base64");
           const validation = StorageService.validateFile(jf.mimeType, buffer.length);
           if (!validation.valid) {
             res.status(400).json({ error: validation.error });

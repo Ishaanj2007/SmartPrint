@@ -470,10 +470,11 @@ var OrderController = class {
       }
       if (jsonFiles && Array.isArray(jsonFiles) && jsonFiles.length > 0) {
         for (const jf of jsonFiles) {
-          if (!jf.base64Data || !jf.filename || !jf.mimeType) {
+          const rawBase64 = jf.base64Data || jf.fileBase64 || jf.data || jf.content;
+          if (!rawBase64 || !jf.filename || !jf.mimeType) {
             continue;
           }
-          const buffer = Buffer.from(jf.base64Data.replace(/^data:.*,/, ""), "base64");
+          const buffer = Buffer.from(rawBase64.replace(/^data:.*,/, ""), "base64");
           const validation = StorageService.validateFile(jf.mimeType, buffer.length);
           if (!validation.valid) {
             res.status(400).json({ error: validation.error });
@@ -1094,10 +1095,20 @@ var CleanupService = class {
 
 // server.ts
 var app = express();
-var PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3e3;
+var PORT = process.env.DEFAULT_APP_PORT ? parseInt(process.env.DEFAULT_APP_PORT, 10) : process.env.PORT ? parseInt(process.env.PORT, 10) : 3e3;
 var isProduction = process.env.NODE_ENV === "production";
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization, X-Agent-ID, X-Agent-Token");
+  if (req.method === "OPTIONS") {
+    res.sendStatus(204);
+    return;
+  }
+  next();
+});
 app.use((req, res, next) => {
   const start = Date.now();
   res.on("finish", () => {
@@ -1140,6 +1151,10 @@ async function setupViteOrStatic() {
     const distPath = path3.resolve(process.cwd(), "dist");
     app.use(express.static(distPath));
     app.get("*", (req, res) => {
+      if (req.path.startsWith("/api")) {
+        res.status(404).json({ error: `API route not found: ${req.method} ${req.path}` });
+        return;
+      }
       const indexFile = path3.join(distPath, "index.html");
       if (fs3.existsSync(indexFile)) {
         res.sendFile(indexFile);
