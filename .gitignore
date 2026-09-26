@@ -6,3 +6,12 @@ coverage/
 *.log
 .env*
 !.env.example
+uploads/
+spool/
+data/
+*.sqlite
+*.db
+print-agent/__pycache__/
+print-agent/*.log
+print-agent/test_download*
+test_sample.pdf

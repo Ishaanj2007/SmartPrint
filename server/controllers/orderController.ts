@@ -1,24 +1,20 @@
 import { Request, Response } from 'express';
-import { OrderService } from '../services/orderService.js';
-import { StorageService } from '../storage/storage.js';
-import { PrintSettings } from '../types.js';
+import { OrderService } from '../services/orderService.ts';
+import { StorageService } from '../storage/storage.ts';
+import { PrintSettings } from '../types.ts';
 
 export class OrderController {
   public static async createOrder(req: Request, res: Response): Promise<void> {
     try {
-      const {
-        customerName,
-        customerPhone,
-        customerNotes,
-        defaultSettings,
-        files: jsonFilesInput,
-        jsonFiles: alternativeJsonFiles,
-      } = req.body;
+      const { customerName, customerPhone, customerNotes, defaultSettings } = req.body;
+      const uploadedFiles = req.files as Express.Multer.File[];
 
-      const jsonFiles = alternativeJsonFiles || jsonFilesInput;
+      if (!uploadedFiles || uploadedFiles.length === 0) {
+        res.status(400).json({ error: 'Please upload at least one document.' });
+        return;
+      }
 
-      // Parse default print settings
-      let parsedDefaultSettings: PrintSettings = {
+      let parsedSettings: PrintSettings = {
         paperSize: 'A4',
         colorMode: 'BW',
         sides: 'SINGLE',
@@ -28,88 +24,33 @@ export class OrderController {
 
       if (defaultSettings) {
         try {
-          const parsed = typeof defaultSettings === 'string' ? JSON.parse(defaultSettings) : defaultSettings;
-          parsedDefaultSettings = { ...parsedDefaultSettings, ...parsed };
+          parsedSettings = typeof defaultSettings === 'string' ? JSON.parse(defaultSettings) : defaultSettings;
         } catch (e) {
-          // ignore parsing error, use default
+          // fallback to defaults
         }
       }
 
-      const filesToProcess: Array<{
-        originalFilename: string;
-        storageFilename: string;
-        storagePath: string;
-        mimeType: string;
-        fileSizeBytes: number;
-        pageCount?: number;
-        printSettings: PrintSettings;
-      }> = [];
-
-      // 1. Process files from multer (if multipart upload)
-      if (req.files && Array.isArray(req.files) && req.files.length > 0) {
-        for (const file of req.files as Express.Multer.File[]) {
-          const validation = StorageService.validateFile(file.mimetype, file.size);
-          if (!validation.valid) {
-            res.status(400).json({ error: validation.error });
-            return;
-          }
-
-          const stored = StorageService.saveBuffer(
-            file.originalname,
-            file.mimetype,
-            file.buffer
-          );
-
-          filesToProcess.push({
-            ...stored,
-            pageCount: 1,
-            printSettings: parsedDefaultSettings,
-          });
+      const filesToProcess = [];
+      for (const file of uploadedFiles) {
+        const validation = StorageService.validateFile(file.mimetype, file.size);
+        if (!validation.valid) {
+          res.status(400).json({ error: validation.error });
+          return;
         }
-      }
 
-      // 2. Process base64 JSON files (alternative upload method)
-      if (jsonFiles && Array.isArray(jsonFiles) && jsonFiles.length > 0) {
-        for (const jf of jsonFiles) {
-          const rawBase64 = jf.base64Data || jf.fileBase64 || jf.data || jf.content;
-          if (!rawBase64 || !jf.filename || !jf.mimeType) {
-            continue;
-          }
-          const buffer = Buffer.from(rawBase64.replace(/^data:.*,/, ''), 'base64');
-          const validation = StorageService.validateFile(jf.mimeType, buffer.length);
-          if (!validation.valid) {
-            res.status(400).json({ error: validation.error });
-            return;
-          }
-
-          const stored = StorageService.saveBuffer(jf.filename, jf.mimeType, buffer);
-          const itemSettings: PrintSettings = jf.printSettings
-            ? { ...parsedDefaultSettings, ...jf.printSettings }
-            : parsedDefaultSettings;
-
-          filesToProcess.push({
-            ...stored,
-            pageCount: jf.pageCount || 1,
-            printSettings: itemSettings,
-          });
-        }
-      }
-
-      if (filesToProcess.length === 0) {
-        res.status(400).json({
-          error: 'No valid documents uploaded. Please provide at least one PDF, JPG, or PNG file.',
+        const stored = StorageService.saveBuffer(file.originalname, file.mimetype, file.buffer);
+        filesToProcess.push({
+          originalFilename: stored.originalFilename,
+          storageFilename: stored.storageFilename,
+          storagePath: stored.storagePath,
+          mimeType: stored.mimeType,
+          fileSizeBytes: stored.fileSizeBytes,
+          pageCount: 1,
+          printSettings: parsedSettings,
         });
-        return;
       }
 
-      if (filesToProcess.length > 10) {
-        res.status(400).json({
-          error: 'Maximum 10 files allowed per print order.',
-        });
-        return;
-      }
-
-      const order = OrderService.createOrder({
+      const newOrder = await OrderService.createOrder({
         customerName,
         customerPhone,
         customerNotes,
@@ -118,34 +59,47 @@ export class OrderController {
 
       res.status(201).json({
         success: true,
-        orderId: order.id,
-        publicOrderId: order.publicOrderId,
-        status: order.status,
-        order,
+        orderId: newOrder.id,
+        publicOrderId: newOrder.publicOrderId,
+        status: newOrder.status,
+        order: newOrder,
       });
     } catch (error: any) {
       console.error('[ORDER] Error creating order:', error);
-      res.status(500).json({
-        error: error.message || 'Internal server error while creating order',
-      });
+      res.status(500).json({ error: error.message || 'Failed to submit order' });
     }
   }
 
   public static async getOrderStatus(req: Request, res: Response): Promise<void> {
     try {
       const { publicOrderId } = req.params;
-      const order = OrderService.getOrderByPublicId(publicOrderId) || OrderService.getOrderById(publicOrderId);
+      const order =
+        (await OrderService.getOrderByPublicId(publicOrderId)) ||
+        (await OrderService.getOrderById(publicOrderId));
 
       if (!order) {
-        res.status(404).json({
-          error: `Order '${publicOrderId}' not found. Please verify your Order ID.`,
-        });
+        res.status(404).json({ error: `Order '${publicOrderId}' not found.` });
         return;
       }
 
       res.json({
         success: true,
-        order,
+        order: {
+          id: order.id,
+          publicOrderId: order.publicOrderId,
+          status: order.status,
+          customerName: order.customerName,
+          totalFiles: order.totalFiles,
+          files: order.files.map((f) => ({
+            id: f.id,
+            originalFilename: f.originalFilename,
+            fileSizeBytes: f.fileSizeBytes,
+            mimeType: f.mimeType,
+            printSettings: f.printSettings,
+          })),
+          createdAt: order.createdAt,
+          updatedAt: order.updatedAt,
+        },
       });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -155,7 +109,7 @@ export class OrderController {
   public static async getFile(req: Request, res: Response): Promise<void> {
     try {
       const { orderId, fileId } = req.params;
-      const order = OrderService.getOrderById(orderId) || OrderService.getOrderByPublicId(orderId);
+      const order = await OrderService.getOrderById(orderId);
 
       if (!order) {
         res.status(404).json({ error: 'Order not found' });
@@ -170,12 +124,11 @@ export class OrderController {
 
       const filePath = StorageService.resolveFilePath(file.storageFilename);
       if (!filePath) {
-        res.status(404).json({ error: 'File on disk was removed or expired' });
+        res.status(404).json({ error: 'File data missing' });
         return;
       }
 
       res.setHeader('Content-Type', file.mimeType);
-      res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(file.originalFilename)}"`);
       res.sendFile(filePath);
     } catch (error: any) {
       res.status(500).json({ error: error.message });

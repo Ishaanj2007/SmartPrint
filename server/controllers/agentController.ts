@@ -1,8 +1,8 @@
 import { Response } from 'express';
-import { AuthenticatedAgentRequest } from '../auth/agentAuth.js';
-import { AgentService } from '../services/agentService.js';
-import { OrderService } from '../services/orderService.js';
-import { StorageService } from '../storage/storage.js';
+import { AuthenticatedAgentRequest } from '../auth/agentAuth.ts';
+import { AgentService } from '../services/agentService.ts';
+import { OrderService } from '../services/orderService.ts';
+import { StorageService } from '../storage/storage.ts';
 
 export class AgentController {
   public static async authenticate(req: AuthenticatedAgentRequest, res: Response): Promise<void> {
@@ -21,7 +21,7 @@ export class AgentController {
       const agent = req.agent!;
       const { status, printer_name, print_mode, system_info } = req.body;
 
-      const updated = AgentService.recordHeartbeat(
+      const updated = await AgentService.recordHeartbeat(
         agent.id,
         status || 'IDLE',
         printer_name,
@@ -40,7 +40,7 @@ export class AgentController {
 
   public static async getJobs(req: AuthenticatedAgentRequest, res: Response): Promise<void> {
     try {
-      const approvedJobs = AgentService.getApprovedJobs();
+      const approvedJobs = await AgentService.getApprovedJobs();
       // Format jobs to provide both snake_case and camelCase compatibility with python agent
       const formattedJobs = approvedJobs.map((order) => ({
         id: order.id,
@@ -118,7 +118,7 @@ export class AgentController {
       const agent = req.agent!;
       const { id } = req.params;
 
-      const updated = AgentService.markPrinting(id, agent.id);
+      const updated = await AgentService.markPrinting(id, agent.id);
       res.json({
         success: true,
         order: updated,
@@ -134,7 +134,7 @@ export class AgentController {
       const { id } = req.params;
       const { details } = req.body;
 
-      const updated = AgentService.markCompleted(id, agent.id, details);
+      const updated = await AgentService.markCompleted(id, agent.id, details);
       res.json({
         success: true,
         order: updated,
@@ -150,7 +150,7 @@ export class AgentController {
       const { id } = req.params;
       const { error_message } = req.body;
 
-      const updated = AgentService.markFailed(id, agent.id, error_message);
+      const updated = await AgentService.markFailed(id, agent.id, error_message);
       res.json({
         success: true,
         order: updated,
@@ -162,8 +162,8 @@ export class AgentController {
 
   public static async downloadFile(req: AuthenticatedAgentRequest, res: Response): Promise<void> {
     try {
-      const { id, fileId } = req.params;
-      const order = OrderService.getOrderById(id);
+      const { orderId, fileId } = req.params;
+      const order = await OrderService.getOrderById(orderId);
 
       if (!order) {
         res.status(404).json({ error: 'Order not found' });
@@ -176,16 +176,15 @@ export class AgentController {
         return;
       }
 
-      const filePath = StorageService.resolveFilePath(file.storageFilename);
-      if (!filePath) {
-        res.status(404).json({ error: 'File content not found on server' });
+      const resolvedPath = StorageService.resolveFilePath(file.storageFilename);
+      if (!resolvedPath) {
+        res.status(404).json({ error: 'File data missing from spool' });
         return;
       }
 
       res.setHeader('Content-Type', file.mimeType);
-      res.setHeader('Content-Length', file.fileSizeBytes);
-      res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(file.originalFilename)}"`);
-      res.sendFile(filePath);
+      res.setHeader('Content-Disposition', `attachment; filename="${file.originalFilename}"`);
+      res.sendFile(resolvedPath);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

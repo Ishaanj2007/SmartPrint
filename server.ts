@@ -1,31 +1,28 @@
-import express, { type Request, type Response } from 'express';
+import express, { Request, Response } from 'express';
+import cors from 'cors';
 import path from 'path';
 import fs from 'fs';
-import { orderRoutes } from './server/routes/orderRoutes.js';
-import { adminRoutes } from './server/routes/adminRoutes.js';
-import { agentRoutes } from './server/routes/agentRoutes.js';
-import { CleanupService } from './server/services/cleanupService.js';
-import { db } from './server/database/db.js';
+import { orderRoutes } from './server/routes/orderRoutes.ts';
+import { adminRoutes } from './server/routes/adminRoutes.ts';
+import { agentRoutes } from './server/routes/agentRoutes.ts';
+import { db } from './server/database/db.ts';
+import { CleanupService } from './server/services/cleanupService.ts';
 
 const app = express();
-const PORT = process.env.DEFAULT_APP_PORT ? parseInt(process.env.DEFAULT_APP_PORT, 10) : (process.env.PORT ? parseInt(process.env.PORT, 10) : 3000);
-const isProduction = process.env.NODE_ENV === 'production';
+const PORT = Number(process.env.PORT) || 3000;
 
-// Body parsing with generous limit for large document uploads / base64 payloads
+// Enable CORS
+app.use(cors());
+
+// Parse JSON and urlencoded payloads
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// CORS & Preflight support for external Agent & API clients
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, X-Agent-ID, X-Agent-Token');
-  if (req.method === 'OPTIONS') {
-    res.sendStatus(204);
-    return;
-  }
-  next();
-});
+// Ensure essential directories exist
+const uploadsDir = path.resolve(process.cwd(), 'uploads');
+const spoolDir = path.resolve(process.cwd(), 'spool');
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+if (!fs.existsSync(spoolDir)) fs.mkdirSync(spoolDir, { recursive: true });
 
 // Basic request logger for backend observability
 app.use((req, res, next) => {
@@ -38,32 +35,37 @@ app.use((req, res, next) => {
   next();
 });
 
-// System info endpoint
-app.get('/api/system/info', (req: Request, res: Response) => {
-  const defaultAgent = db.getAgent('SHOP_001');
-  const appUrl = process.env.APP_URL || `http://localhost:${PORT}`;
+// System info endpoint (reads persistent Cloud SQL state)
+app.get('/api/system/info', async (req: Request, res: Response) => {
+  try {
+    const defaultAgent = await db.getAgent('SHOP_001');
+    const appUrl = process.env.APP_URL || `http://localhost:${PORT}`;
 
-  const lastSeen = defaultAgent?.lastHeartbeatAt ? new Date(defaultAgent.lastHeartbeatAt).getTime() : 0;
-  const secondsSinceHeartbeat = Math.round((Date.now() - lastSeen) / 1000);
-  const isOnline = defaultAgent ? secondsSinceHeartbeat <= 30 : false;
+    const lastSeen = defaultAgent?.lastHeartbeatAt ? new Date(defaultAgent.lastHeartbeatAt).getTime() : 0;
+    const secondsSinceHeartbeat = Math.round((Date.now() - lastSeen) / 1000);
+    const isOnline = defaultAgent ? secondsSinceHeartbeat <= 30 : false;
 
-  res.json({
-    shopName: 'QuickPrint Xerox & Digital Press',
-    appUrl,
-    customerQrUrl: appUrl,
-    defaultAgent: {
-      id: defaultAgent?.id || 'SHOP_001',
-      name: defaultAgent?.name || 'Counter Main Windows PC',
-      printer: defaultAgent?.configuredPrinter || 'EPSON L8050 Series',
-      isOnline,
-      secondsSinceHeartbeat,
-      lastHeartbeatAt: defaultAgent?.lastHeartbeatAt || null,
-      currentStatus: isOnline ? (defaultAgent?.currentStatus || 'IDLE') : 'OFFLINE',
-    },
-    supportedFormats: ['PDF', 'JPG', 'JPEG', 'PNG'],
-    maxFileSizeMb: 20,
-    maxFilesPerOrder: 10,
-  });
+    res.json({
+      shopName: 'QuickPrint Xerox & Digital Press',
+      appUrl,
+      customerQrUrl: appUrl,
+      defaultAgent: {
+        id: defaultAgent?.id || 'SHOP_001',
+        name: defaultAgent?.name || 'Counter Main Windows PC',
+        printer: defaultAgent?.configuredPrinter || 'EPSON L8050 Series',
+        isOnline,
+        secondsSinceHeartbeat,
+        lastHeartbeatAt: defaultAgent?.lastHeartbeatAt || null,
+        currentStatus: isOnline ? (defaultAgent?.currentStatus || 'IDLE') : 'OFFLINE',
+      },
+      supportedFormats: ['PDF', 'JPG', 'JPEG', 'PNG'],
+      maxFileSizeMb: 20,
+      maxFilesPerOrder: 10,
+    });
+  } catch (err: any) {
+    console.error('[API] Error in /api/system/info:', err);
+    res.status(500).json({ error: 'Failed to retrieve system info' });
+  }
 });
 
 // API Routes
@@ -107,11 +109,9 @@ async function setupViteOrStatic() {
     console.log(` Xerox Print Shop Automation Server running on port ${PORT}`);
     console.log(` URL: http://localhost:${PORT}`);
     console.log(` Mode: ${hasDist ? 'Static Production' : 'Vite Dev Middleware'}`);
+    console.log(` Database: Persistent Google Cloud SQL (PostgreSQL)`);
     console.log(`=======================================================`);
   });
 }
 
-setupViteOrStatic().catch((err) => {
-  console.error('[FATAL] Failed to start server:', err);
-  process.exit(1);
-});
+setupViteOrStatic();

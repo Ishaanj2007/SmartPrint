@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { AgentController } from "../controllers/agentController.js";
-import { requireAgentAuth } from "../auth/agentAuth.js";
+import { AgentController } from "../controllers/agentController.ts";
+import { requireAgentAuth } from "../auth/agentAuth.ts";
 const agentRoutes = Router();
 agentRoutes.use(requireAgentAuth);
 agentRoutes.post("/auth", AgentController.authenticate);

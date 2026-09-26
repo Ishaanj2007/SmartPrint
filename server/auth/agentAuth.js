@@ -1,5 +1,5 @@
-import { db } from "../database/db.js";
-function requireAgentAuth(req, res, next) {
+import { db } from "../database/db.ts";
+async function requireAgentAuth(req, res, next) {
   let agentId = req.headers["x-agent-id"] || req.body && req.body.agent_id;
   const authHeader = req.headers["authorization"];
   const agentTokenHeader = req.headers["x-agent-token"];
@@ -11,7 +11,8 @@ function requireAgentAuth(req, res, next) {
     return;
   }
   if (!agentId) {
-    const matchedAgent = db.getAllAgents().find((a) => a.token === token);
+    const allAgents = await db.getAllAgents();
+    const matchedAgent = allAgents.find((a) => a.token === token);
     if (matchedAgent) {
       agentId = matchedAgent.id;
     }
@@ -22,7 +23,7 @@ function requireAgentAuth(req, res, next) {
     });
     return;
   }
-  const agent = db.getAgent(agentId);
+  const agent = await db.getAgent(agentId);
   if (!agent) {
     res.status(401).json({
       error: `Unauthorized: Unknown Agent ID '${agentId}'.`

@@ -1,6 +1,6 @@
-import { OrderService } from "../services/orderService.js";
-import { db } from "../database/db.js";
-import { ADMIN_PASSWORD, ADMIN_TOKEN, ADMIN_USERNAME } from "../auth/adminAuth.js";
+import { OrderService } from "../services/orderService.ts";
+import { db } from "../database/db.ts";
+import { ADMIN_PASSWORD, ADMIN_TOKEN, ADMIN_USERNAME } from "../auth/adminAuth.ts";
 class AdminController {
   static async login(req, res) {
     const { username, password } = req.body;
@@ -22,8 +22,8 @@ class AdminController {
   static async getOrders(req, res) {
     try {
       const status = req.query.status;
-      const orders = OrderService.getOrders(status);
-      const allOrders = OrderService.getOrders();
+      const orders = await OrderService.getOrders(status);
+      const allOrders = await OrderService.getOrders();
       const counts = {
         ALL: allOrders.length,
         PENDING: allOrders.filter((o) => o.status === "PENDING").length,
@@ -46,12 +46,12 @@ class AdminController {
   static async getOrderDetails(req, res) {
     try {
       const { id } = req.params;
-      const order = OrderService.getOrderById(id) || OrderService.getOrderByPublicId(id);
+      const order = await OrderService.getOrderById(id) || await OrderService.getOrderByPublicId(id);
       if (!order) {
         res.status(404).json({ error: "Order not found" });
         return;
       }
-      const auditLogs = db.getAuditLogs(order.id);
+      const auditLogs = await db.getAuditLogs(order.id);
       res.json({
         success: true,
         order,
@@ -64,7 +64,7 @@ class AdminController {
   static async approveOrder(req, res) {
     try {
       const { id } = req.params;
-      const updated = OrderService.approveOrder(id);
+      const updated = await OrderService.approveOrder(id);
       res.json({
         success: true,
         message: "Order approved successfully. Ready for Print Agent.",
@@ -78,7 +78,7 @@ class AdminController {
     try {
       const { id } = req.params;
       const { reason } = req.body;
-      const updated = OrderService.rejectOrder(id, reason || "Rejected by shop admin");
+      const updated = await OrderService.rejectOrder(id, reason || "Rejected by shop admin");
       res.json({
         success: true,
         message: "Order rejected.",
@@ -91,7 +91,7 @@ class AdminController {
   static async retryOrder(req, res) {
     try {
       const { id } = req.params;
-      const updated = OrderService.retryFailedOrder(id);
+      const updated = await OrderService.retryFailedOrder(id);
       res.json({
         success: true,
         message: "Order reset to APPROVED for printing retry.",
@@ -103,7 +103,8 @@ class AdminController {
   }
   static async getAgents(req, res) {
     try {
-      const agents = db.getAllAgents().map((agent) => {
+      const agentList = await db.getAllAgents();
+      const agents = agentList.map((agent) => {
         const lastSeen = agent.lastHeartbeatAt ? new Date(agent.lastHeartbeatAt).getTime() : 0;
         const diffSeconds = Math.round((Date.now() - lastSeen) / 1e3);
         const isOnline = diffSeconds <= 30;
@@ -121,6 +122,7 @@ class AdminController {
       });
       res.json({
         success: true,
+        count: agents.length,
         agents
       });
     } catch (error) {

@@ -1,9 +1,9 @@
 import crypto from "crypto";
-import { db } from "../database/db.js";
+import { db } from "../database/db.ts";
 class OrderService {
-  static createOrder(input) {
+  static async createOrder(input) {
     const orderId = `ord-${Date.now()}-${crypto.randomBytes(4).toString("hex")}`;
-    const publicOrderId = db.generatePublicOrderId();
+    const publicOrderId = await db.generatePublicOrderId();
     const now = (/* @__PURE__ */ new Date()).toISOString();
     const printFiles = input.files.map((f, index) => ({
       id: `file-${Date.now()}-${index}-${crypto.randomBytes(3).toString("hex")}`,
@@ -29,8 +29,8 @@ class OrderService {
       createdAt: now,
       updatedAt: now
     };
-    db.saveOrder(order);
-    db.logAudit({
+    await db.saveOrder(order);
+    await db.logAudit({
       id: `audit-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
       orderId,
       previousStatus: void 0,
@@ -41,21 +41,17 @@ class OrderService {
     });
     return order;
   }
-  static getOrderByPublicId(publicOrderId) {
-    return db.getOrderByPublicId(publicOrderId);
+  static async getOrderByPublicId(publicOrderId) {
+    return await db.getOrderByPublicId(publicOrderId);
   }
-  static getOrderById(id) {
-    return db.getOrderById(id);
+  static async getOrderById(id) {
+    return await db.getOrderById(id);
   }
-  static getOrders(statusFilter) {
-    const orders = db.getOrders();
-    if (!statusFilter || statusFilter === "ALL") {
-      return orders;
-    }
-    return orders.filter((o) => o.status === statusFilter.toUpperCase());
+  static async getOrders(statusFilter) {
+    return await db.getOrders(statusFilter);
   }
-  static approveOrder(orderId, adminId = "admin") {
-    const order = db.getOrderById(orderId);
+  static async approveOrder(orderId, adminId = "admin") {
+    const order = await db.getOrderById(orderId);
     if (!order) {
       throw new Error(`Order '${orderId}' not found.`);
     }
@@ -68,8 +64,8 @@ class OrderService {
     order.failureReason = void 0;
     order.claimedByAgent = void 0;
     order.updatedAt = (/* @__PURE__ */ new Date()).toISOString();
-    db.saveOrder(order);
-    db.logAudit({
+    await db.saveOrder(order);
+    await db.logAudit({
       id: `audit-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
       orderId,
       previousStatus: prev,
@@ -81,8 +77,8 @@ class OrderService {
     });
     return order;
   }
-  static rejectOrder(orderId, reason, adminId = "admin") {
-    const order = db.getOrderById(orderId);
+  static async rejectOrder(orderId, reason, adminId = "admin") {
+    const order = await db.getOrderById(orderId);
     if (!order) {
       throw new Error(`Order '${orderId}' not found.`);
     }
@@ -90,8 +86,8 @@ class OrderService {
     order.status = "REJECTED";
     order.rejectionReason = reason || "Declined by shop administrator";
     order.updatedAt = (/* @__PURE__ */ new Date()).toISOString();
-    db.saveOrder(order);
-    db.logAudit({
+    await db.saveOrder(order);
+    await db.logAudit({
       id: `audit-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
       orderId,
       previousStatus: prev,
@@ -103,8 +99,8 @@ class OrderService {
     });
     return order;
   }
-  static retryFailedOrder(orderId, adminId = "admin") {
-    const order = db.getOrderById(orderId);
+  static async retryFailedOrder(orderId, adminId = "admin") {
+    const order = await db.getOrderById(orderId);
     if (!order) {
       throw new Error(`Order '${orderId}' not found.`);
     }
@@ -116,8 +112,8 @@ class OrderService {
     order.failureReason = void 0;
     order.claimedByAgent = void 0;
     order.updatedAt = (/* @__PURE__ */ new Date()).toISOString();
-    db.saveOrder(order);
-    db.logAudit({
+    await db.saveOrder(order);
+    await db.logAudit({
       id: `audit-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
       orderId,
       previousStatus: prev,

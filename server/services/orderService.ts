@@ -1,6 +1,6 @@
 import crypto from 'crypto';
-import { db } from '../database/db.js';
-import { Order, OrderStatus, PrintFile, PrintSettings } from '../types.js';
+import { db } from '../database/db.ts';
+import { Order, OrderStatus, PrintFile, PrintSettings } from '../types.ts';
 
 export interface CreateOrderInput {
   customerName?: string;
@@ -18,9 +18,9 @@ export interface CreateOrderInput {
 }
 
 export class OrderService {
-  public static createOrder(input: CreateOrderInput): Order {
+  public static async createOrder(input: CreateOrderInput): Promise<Order> {
     const orderId = `ord-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
-    const publicOrderId = db.generatePublicOrderId();
+    const publicOrderId = await db.generatePublicOrderId();
     const now = new Date().toISOString();
 
     const printFiles: PrintFile[] = input.files.map((f, index) => ({
@@ -49,9 +49,9 @@ export class OrderService {
       updatedAt: now,
     };
 
-    db.saveOrder(order);
+    await db.saveOrder(order);
 
-    db.logAudit({
+    await db.logAudit({
       id: `audit-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
       orderId,
       previousStatus: undefined,
@@ -64,24 +64,20 @@ export class OrderService {
     return order;
   }
 
-  public static getOrderByPublicId(publicOrderId: string): Order | undefined {
-    return db.getOrderByPublicId(publicOrderId);
+  public static async getOrderByPublicId(publicOrderId: string): Promise<Order | null> {
+    return await db.getOrderByPublicId(publicOrderId);
   }
 
-  public static getOrderById(id: string): Order | undefined {
-    return db.getOrderById(id);
+  public static async getOrderById(id: string): Promise<Order | null> {
+    return await db.getOrderById(id);
   }
 
-  public static getOrders(statusFilter?: string): Order[] {
-    const orders = db.getOrders();
-    if (!statusFilter || statusFilter === 'ALL') {
-      return orders;
-    }
-    return orders.filter((o) => o.status === statusFilter.toUpperCase());
+  public static async getOrders(statusFilter?: string): Promise<Order[]> {
+    return await db.getOrders(statusFilter);
   }
 
-  public static approveOrder(orderId: string, adminId = 'admin'): Order {
-    const order = db.getOrderById(orderId);
+  public static async approveOrder(orderId: string, adminId = 'admin'): Promise<Order> {
+    const order = await db.getOrderById(orderId);
     if (!order) {
       throw new Error(`Order '${orderId}' not found.`);
     }
@@ -97,9 +93,9 @@ export class OrderService {
     order.claimedByAgent = undefined;
     order.updatedAt = new Date().toISOString();
 
-    db.saveOrder(order);
+    await db.saveOrder(order);
 
-    db.logAudit({
+    await db.logAudit({
       id: `audit-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
       orderId,
       previousStatus: prev,
@@ -113,8 +109,8 @@ export class OrderService {
     return order;
   }
 
-  public static rejectOrder(orderId: string, reason: string, adminId = 'admin'): Order {
-    const order = db.getOrderById(orderId);
+  public static async rejectOrder(orderId: string, reason: string, adminId = 'admin'): Promise<Order> {
+    const order = await db.getOrderById(orderId);
     if (!order) {
       throw new Error(`Order '${orderId}' not found.`);
     }
@@ -124,9 +120,9 @@ export class OrderService {
     order.rejectionReason = reason || 'Declined by shop administrator';
     order.updatedAt = new Date().toISOString();
 
-    db.saveOrder(order);
+    await db.saveOrder(order);
 
-    db.logAudit({
+    await db.logAudit({
       id: `audit-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
       orderId,
       previousStatus: prev,
@@ -140,8 +136,8 @@ export class OrderService {
     return order;
   }
 
-  public static retryFailedOrder(orderId: string, adminId = 'admin'): Order {
-    const order = db.getOrderById(orderId);
+  public static async retryFailedOrder(orderId: string, adminId = 'admin'): Promise<Order> {
+    const order = await db.getOrderById(orderId);
     if (!order) {
       throw new Error(`Order '${orderId}' not found.`);
     }
@@ -156,9 +152,9 @@ export class OrderService {
     order.claimedByAgent = undefined;
     order.updatedAt = new Date().toISOString();
 
-    db.saveOrder(order);
+    await db.saveOrder(order);
 
-    db.logAudit({
+    await db.logAudit({
       id: `audit-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
       orderId,
       previousStatus: prev,

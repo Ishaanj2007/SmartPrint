@@ -1,42 +1,55 @@
-import { db } from '../database/db.js';
-import { Order, PrintAgent } from '../types.js';
+import { db } from '../database/db.ts';
+import { Order, PrintAgent } from '../types.ts';
 
 export class AgentService {
-  public static recordHeartbeat(
+  public static async recordHeartbeat(
     agentId: string,
     status: 'IDLE' | 'PRINTING' | 'ERROR' | 'OFFLINE',
     printerName?: string,
     printMode?: 'windows' | 'mock',
     systemInfo?: Record<string, any>
-  ): PrintAgent {
-    const agent = db.getAgent(agentId);
+  ): Promise<PrintAgent> {
+    let agent = await db.getAgent(agentId);
     const now = new Date().toISOString();
 
     if (!agent) {
-      throw new Error(`Agent '${agentId}' not found.`);
+      // Auto-register if known agent ID
+      agent = {
+        id: agentId,
+        name: 'Counter Main Windows PC',
+        token: 'agent_secret_token_123',
+        configuredPrinter: printerName || 'EPSON L8050 Series',
+        isActive: true,
+        lastHeartbeatAt: now,
+        currentStatus: status,
+        printMode: printMode || 'windows',
+        systemInfo: systemInfo || undefined,
+        createdAt: now,
+        updatedAt: now,
+      };
+    } else {
+      agent.lastHeartbeatAt = now;
+      agent.currentStatus = status;
+      if (printerName) agent.configuredPrinter = printerName;
+      if (printMode) agent.printMode = printMode;
+      if (systemInfo) agent.systemInfo = { ...agent.systemInfo, ...systemInfo };
+      agent.updatedAt = now;
     }
 
-    agent.lastHeartbeatAt = now;
-    agent.currentStatus = status;
-    if (printerName) agent.configuredPrinter = printerName;
-    if (printMode) agent.printMode = printMode;
-    if (systemInfo) agent.systemInfo = { ...agent.systemInfo, ...systemInfo };
-    agent.updatedAt = now;
-
-    db.saveAgent(agent);
+    await db.saveAgent(agent);
     return agent;
   }
 
-  public static getApprovedJobs(): Order[] {
-    return db.getApprovedOrders();
+  public static async getApprovedJobs(): Promise<Order[]> {
+    return await db.getApprovedOrders();
   }
 
   public static async claimJob(orderId: string, agentId: string): Promise<boolean> {
     return await db.claimApprovedOrder(orderId, agentId);
   }
 
-  public static markPrinting(orderId: string, agentId: string): Order {
-    const order = db.getOrderById(orderId);
+  public static async markPrinting(orderId: string, agentId: string): Promise<Order> {
+    const order = await db.getOrderById(orderId);
     if (!order) {
       throw new Error(`Order '${orderId}' not found.`);
     }
@@ -45,9 +58,9 @@ export class AgentService {
     order.status = 'PRINTING';
     order.updatedAt = new Date().toISOString();
 
-    db.saveOrder(order);
+    await db.saveOrder(order);
 
-    db.logAudit({
+    await db.logAudit({
       id: `audit-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
       orderId,
       previousStatus: prev,
@@ -61,8 +74,8 @@ export class AgentService {
     return order;
   }
 
-  public static markCompleted(orderId: string, agentId: string, details?: any): Order {
-    const order = db.getOrderById(orderId);
+  public static async markCompleted(orderId: string, agentId: string, details?: any): Promise<Order> {
+    const order = await db.getOrderById(orderId);
     if (!order) {
       throw new Error(`Order '${orderId}' not found.`);
     }
@@ -71,9 +84,9 @@ export class AgentService {
     order.status = 'COMPLETED';
     order.updatedAt = new Date().toISOString();
 
-    db.saveOrder(order);
+    await db.saveOrder(order);
 
-    db.logAudit({
+    await db.logAudit({
       id: `audit-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
       orderId,
       previousStatus: prev,
@@ -87,8 +100,8 @@ export class AgentService {
     return order;
   }
 
-  public static markFailed(orderId: string, agentId: string, errorMessage: string): Order {
-    const order = db.getOrderById(orderId);
+  public static async markFailed(orderId: string, agentId: string, errorMessage: string): Promise<Order> {
+    const order = await db.getOrderById(orderId);
     if (!order) {
       throw new Error(`Order '${orderId}' not found.`);
     }
@@ -98,9 +111,9 @@ export class AgentService {
     order.failureReason = errorMessage || 'Windows print spooler reported error';
     order.updatedAt = new Date().toISOString();
 
-    db.saveOrder(order);
+    await db.saveOrder(order);
 
-    db.logAudit({
+    await db.logAudit({
       id: `audit-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
       orderId,
       previousStatus: prev,

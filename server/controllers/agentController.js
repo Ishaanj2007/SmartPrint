@@ -1,6 +1,6 @@
-import { AgentService } from "../services/agentService.js";
-import { OrderService } from "../services/orderService.js";
-import { StorageService } from "../storage/storage.js";
+import { AgentService } from "../services/agentService.ts";
+import { OrderService } from "../services/orderService.ts";
+import { StorageService } from "../storage/storage.ts";
 class AgentController {
   static async authenticate(req, res) {
     const agent = req.agent;
@@ -16,7 +16,7 @@ class AgentController {
     try {
       const agent = req.agent;
       const { status, printer_name, print_mode, system_info } = req.body;
-      const updated = AgentService.recordHeartbeat(
+      const updated = await AgentService.recordHeartbeat(
         agent.id,
         status || "IDLE",
         printer_name,
@@ -33,7 +33,7 @@ class AgentController {
   }
   static async getJobs(req, res) {
     try {
-      const approvedJobs = AgentService.getApprovedJobs();
+      const approvedJobs = await AgentService.getApprovedJobs();
       const formattedJobs = approvedJobs.map((order) => ({
         id: order.id,
         public_order_id: order.publicOrderId,
@@ -103,7 +103,7 @@ class AgentController {
     try {
       const agent = req.agent;
       const { id } = req.params;
-      const updated = AgentService.markPrinting(id, agent.id);
+      const updated = await AgentService.markPrinting(id, agent.id);
       res.json({
         success: true,
         order: updated
@@ -117,7 +117,7 @@ class AgentController {
       const agent = req.agent;
       const { id } = req.params;
       const { details } = req.body;
-      const updated = AgentService.markCompleted(id, agent.id, details);
+      const updated = await AgentService.markCompleted(id, agent.id, details);
       res.json({
         success: true,
         order: updated
@@ -131,7 +131,7 @@ class AgentController {
       const agent = req.agent;
       const { id } = req.params;
       const { error_message } = req.body;
-      const updated = AgentService.markFailed(id, agent.id, error_message);
+      const updated = await AgentService.markFailed(id, agent.id, error_message);
       res.json({
         success: true,
         order: updated
@@ -142,8 +142,8 @@ class AgentController {
   }
   static async downloadFile(req, res) {
     try {
-      const { id, fileId } = req.params;
-      const order = OrderService.getOrderById(id);
+      const { orderId, fileId } = req.params;
+      const order = await OrderService.getOrderById(orderId);
       if (!order) {
         res.status(404).json({ error: "Order not found" });
         return;
@@ -153,15 +153,14 @@ class AgentController {
         res.status(404).json({ error: "File not found in order" });
         return;
       }
-      const filePath = StorageService.resolveFilePath(file.storageFilename);
-      if (!filePath) {
-        res.status(404).json({ error: "File content not found on server" });
+      const resolvedPath = StorageService.resolveFilePath(file.storageFilename);
+      if (!resolvedPath) {
+        res.status(404).json({ error: "File data missing from spool" });
         return;
       }
       res.setHeader("Content-Type", file.mimeType);
-      res.setHeader("Content-Length", file.fileSizeBytes);
-      res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(file.originalFilename)}"`);
-      res.sendFile(filePath);
+      res.setHeader("Content-Disposition", `attachment; filename="${file.originalFilename}"`);
+      res.sendFile(resolvedPath);
     } catch (error) {
       res.status(500).json({ error: error.message });
     }

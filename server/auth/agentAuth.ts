@@ -1,12 +1,16 @@
 import { Request, Response, NextFunction } from 'express';
-import { db } from '../database/db.js';
-import { PrintAgent } from '../types.js';
+import { db } from '../database/db.ts';
+import { PrintAgent } from '../types.ts';
 
 export interface AuthenticatedAgentRequest extends Request {
   agent?: PrintAgent;
 }
 
-export function requireAgentAuth(req: AuthenticatedAgentRequest, res: Response, next: NextFunction): void {
+export async function requireAgentAuth(
+  req: AuthenticatedAgentRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
   let agentId = (req.headers['x-agent-id'] as string) || (req.body && req.body.agent_id);
   const authHeader = req.headers['authorization'];
   const agentTokenHeader = req.headers['x-agent-token'] as string;
@@ -25,7 +29,8 @@ export function requireAgentAuth(req: AuthenticatedAgentRequest, res: Response, 
 
   // If agentId was not sent in header or body, attempt lookup by token
   if (!agentId) {
-    const matchedAgent = db.getAllAgents().find((a) => a.token === token);
+    const allAgents = await db.getAllAgents();
+    const matchedAgent = allAgents.find((a) => a.token === token);
     if (matchedAgent) {
       agentId = matchedAgent.id;
     }
@@ -38,7 +43,7 @@ export function requireAgentAuth(req: AuthenticatedAgentRequest, res: Response, 
     return;
   }
 
-  const agent = db.getAgent(agentId);
+  const agent = await db.getAgent(agentId);
   if (!agent) {
     res.status(401).json({
       error: `Unauthorized: Unknown Agent ID '${agentId}'.`,
