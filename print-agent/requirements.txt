@@ -1,0 +1,8 @@
+# Python Print Agent Dependencies
+# Compatible with Python 3.9+
+requests>=2.31.0
+
+# Windows printing system bridge (pywin32 provides win32print, win32api, win32ui)
+# Note: pywin32 is Windows-specific. If testing on macOS/Linux in mock mode,
+# pywin32 is not required and mock printer mode is used automatically.
+pywin32>=306; sys_platform == 'win32'

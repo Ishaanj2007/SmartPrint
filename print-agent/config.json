@@ -1,0 +1,10 @@
+{
+  "server_url": "http://localhost:3000",
+  "agent_id": "SHOP_001",
+  "agent_token": "agent_secret_token_123",
+  "printer_name": "DEFAULT",
+  "poll_interval": 3,
+  "heartbeat_interval": 10,
+  "print_mode": "mock",
+  "temp_dir": "./spool"
+}
